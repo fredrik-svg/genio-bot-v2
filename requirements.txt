@@ -5,3 +5,4 @@ piper-tts
 pyaudio
 soundfile
 numpy
+python-dotenv
