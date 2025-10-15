@@ -176,12 +176,19 @@ def main():
     print("─" * 70)
     
     try:
+        # SÄKERHETSNOTERING: .env-filen innehåller känslig information i klartext.
+        # Detta är standard för miljövariabel-filer och anses säkert så länge:
+        # 1. Filen är exkluderad från versionshantering (.gitignore)
+        # 2. Filbehörigheter är korrekta (chmod 600 rekommenderas)
+        # 3. Systemet är säkert (användarautentisering, ingen obehörig åtkomst)
+        # För produktionsmiljöer bör secrets managers (Vault, AWS Secrets Manager) övervägas.
+        
         with open(ENV_FILE, "w", encoding="utf-8") as f:
             f.write("# MQTT Configuration\n")
             f.write(f"MQTT_HOST={mqtt_host}\n")
             f.write(f"MQTT_PORT={mqtt_port}\n")
             f.write(f"MQTT_USERNAME={mqtt_username}\n")
-            f.write(f"MQTT_PASSWORD={mqtt_password}\n")
+            f.write(f"MQTT_PASSWORD={mqtt_password}\n")  # nosec - intentional for .env file
             f.write(f"MQTT_TLS={mqtt_tls}\n\n")
             
             f.write("# MQTT Topics\n")
@@ -213,6 +220,13 @@ def main():
 
         print(f"✓ Konfiguration sparad i {ENV_FILE}")
         
+        # Säkra filbehörigheter (endast ägaren kan läsa/skriva)
+        try:
+            os.chmod(ENV_FILE, 0o600)
+            print(f"✓ Filbehörigheter satta till 600 (endast ägare kan läsa)")
+        except Exception as e:
+            print(f"⚠️  Varning: Kunde inte sätta filbehörigheter: {e}")
+        
         # Säkerhetsvarning
         print("\n" + "─" * 70)
         print("🔒 SÄKERHETSVARNING")
@@ -220,6 +234,7 @@ def main():
         print(f"⚠️  {ENV_FILE} innehåller känslig information (API-nycklar, lösenord)")
         print(f"⚠️  Dela ALDRIG denna fil eller committa den till Git!")
         print(f"⚠️  Filen är redan exkluderad i .gitignore")
+        print(f"⚠️  Filbehörigheter: 600 (rekommenderas för produktion)")
         
         print("\n" + "─" * 70)
         print("✅ Setup klar!")

@@ -17,8 +17,10 @@ Totalt har **9 filer** uppdaterats med **1193 nya rader** och **277 borttagna ra
 - Skapade `.env.example` som mall
 - Alla känsliga värden laddas nu från miljövariabler
 - Fallback till säkra standardvärden
+- Filbehörigheter sätts till 600 (endast ägare kan läsa/skriva)
+- Dokumenterad säkerhetsnotering om cleartext i .env (standard practice)
 
-**Filer**: `config.py`, `.env.example`
+**Filer**: `config.py`, `.env.example`, `setup_wizard.py`
 
 ### 2. .gitignore för att skydda känsliga filer
 **Problem**: Risk att känsliga filer commitas till Git
