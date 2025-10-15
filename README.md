@@ -1,40 +1,76 @@
 # Projekt: `rpi-n8n-voice-assistant`
 
 ## Översikt
-Detta projekt tillhandahåller en robust röstassistentapplikation designad för Raspberry Pi 5. Den kombinerar lokal Speech-to-Text (STT) och Text-to-Speech (TTS) för svenska med realtidskommunikation till ett n8n-flöde via MQTT. Huvudsyftet är att möjliggöra en handsfree-interaktion med röstkommandon, där Raspberry Pi hanterar ljudin- och utgång samt röstigenkänning/syntes, medan n8n fungerar som den centrala "hjärnan" för att bearbeta kommandon och generera smarta svar.
+Detta projekt tillhandahåller en robust och säker röstassistentapplikation designad för Raspberry Pi 5. Den kombinerar lokal Speech-to-Text (STT) och Text-to-Speech (TTS) för svenska med realtidskommunikation till ett n8n-flöde via MQTT. Huvudsyftet är att möjliggöra en handsfree-interaktion med röstkommandon, där Raspberry Pi hanterar ljudin- och utgång samt röstigenkänning/syntes, medan n8n fungerar som den centrala "hjärnan" för att bearbeta kommandon och generera smarta svar.
 
-Applikationen är byggd med fokus på robusthet, säkerhet och offline-funktionalitet (för STT/TTS och wakeword), vilket gör den idealisk för inbäddade system och IoT-scenarion.
+Applikationen är byggd med fokus på:
+- 🔒 **Säkerhet**: Miljövariabler för känslig data, input-validering, resurshantering
+- ⚡ **Prestanda**: Optimerad ljudhantering och effektiv resursanvändning
+- 👥 **Användarvänlighet**: Interaktiv setup wizard, tydliga felmeddelanden
+- 📈 **Skalbarhet**: Modulär struktur och konfigurerbar arkitektur
+- 🔌 **Offline-funktionalitet**: Lokal STT/TTS och wakeword-detektering
 
 ## Funktioner
-- **Enkel setup-wizard:** Guidar användaren genom initial konfiguration.
-- **Wakeword-detektering:** Aktiveras av ett anpassat wakeword (t.ex. "assistans") med Picovoice Porcupine.
-- **Lokal Speech-to-Text (STT):** Vosk svensk modell.
-- **Lokal Text-to-Speech (TTS):** Piper svensk modell.
-- **MQTT-kommunikation:** Säker och effektiv överföring mellan Raspberry Pi och n8n.
-- **Robust nätverkshantering:** Återanslutningslogik för MQTT.
-- **Ljudfeedback:** Korta ljudsignaler för lyssnar/kvittens.
-- **Konfigurerbart:** Via `config.py`.
-- **Loggning och enkel felhantering.**
+
+### Kärnfunktionalitet
+- 🎯 **Wakeword-detektering**: Aktiveras av ett anpassat wakeword (t.ex. "assistans") med Picovoice Porcupine
+- 🗣️ **Lokal Speech-to-Text (STT)**: Vosk svensk modell för offline röstigenkänning
+- 🔊 **Lokal Text-to-Speech (TTS)**: Piper svensk modell för offline talsyntes
+- 📡 **MQTT-kommunikation**: Säker och effektiv överföring mellan Raspberry Pi och n8n
+- 🔊 **Ljudfeedback**: Korta ljudsignaler för lyssnar/kvittens
+
+### Säkerhet & Prestanda
+- 🔒 **Säker konfiguration**: Miljövariabler via `.env` för känslig data (API-nycklar, lösenord)
+- ✅ **Input-validering**: Skydd mot injektionsattacker och överbelastning
+- 🔄 **Robust återanslutning**: Exponentiell backoff för MQTT med konfigurerbar timeout
+- 🛡️ **Resurshantering**: Automatisk cleanup vid fel och graceful shutdown
+- ⚡ **Optimerad prestanda**: Effektiv bufferthantering och strömning
+
+### Användarvänlighet
+- 🧙 **Interaktiv setup wizard**: Guidar användaren genom initial konfiguration med validering
+- 📝 **Detaljerad loggning**: Tydliga felmeddelanden och statusinformation
+- 📚 **Utförlig dokumentation**: Kommenterad kod med docstrings och typehints
+- ⚙️ **Flexibel konfiguration**: Stödjer både `.env`-filer och miljövariabler
 
 ## Installation (Raspberry Pi OS, 64-bit rekommenderas)
-1) Systempaket:
+
+### 1. Förbered systemet
 ```bash
 sudo apt update && sudo apt upgrade -y
-sudo apt install -y python3 python3-pip portaudio19-dev
+sudo apt install -y python3 python3-pip portaudio19-dev git
 ```
-2) Klona/packa upp projektet och installera Python-paket:
+
+### 2. Klona projektet
 ```bash
-cd rpi-n8n-voice-assistant
+git clone <repository-url>
+cd genio-bot-v2
+```
+
+### 3. Installera Python-paket
+```bash
 pip3 install -r requirements.txt
 ```
-3) Kör setup-wizardet först:
+
+### 4. Kör setup-wizardet
+Setup-wizardet skapar en `.env`-fil med din konfiguration:
 ```bash
 python3 setup_wizard.py
 ```
-4) Starta applikationen:
+
+**Viktigt**: Följ instruktionerna i wizarden och ladda ner nödvändiga modeller:
+- **Vosk** (svenska STT): [alphacephei.com/vosk/models](https://alphacephei.com/vosk/models)
+- **Piper** (svenska TTS): [github.com/rhasspy/piper#voices](https://github.com/rhasspy/piper#voices)
+- **Porcupine** wakeword: [picovoice.ai/platform/porcupine](https://picovoice.ai/platform/porcupine/)
+
+### 5. Starta applikationen
 ```bash
 python3 main.py
 ```
+
+### 🔒 Säkerhetsnot
+- `.env`-filen innehåller känslig information och ska **ALDRIG** committas till Git
+- Filen är redan exkluderad i `.gitignore`
+- Använd `.env.example` som mall för nya installationer
 
 ## n8n (Server)
 - **MQTT Trigger Node**: lyssnar på `rpi/commands/text`.
@@ -61,24 +97,83 @@ return [{ json: { tts_text: responseText } }];
 ## Katalogstruktur
 ```
 rpi-n8n-voice-assistant/
-├── README.md
-├── LICENSE
-├── .gitignore
-├── requirements.txt
-├── main.py
-├── setup_wizard.py
-├── config.py
-├── mqtt_client.py
-├── audio_utils.py
-├── audio_feedback/
-│   ├── start_listen.wav
-│   └── end_listen.wav
-└── models/
-    ├── vosk-model-sv/        # Lägg svensk Vosk-modell här
-    ├── piper-sv/             # Lägg svensk Piper-modell här
+├── README.md                  # Denna fil
+├── LICENSE                    # MIT-licens
+├── .gitignore                 # Exkluderar känsliga filer från Git
+├── .env.example               # Mall för miljövariabler
+├── .env                       # Din konfiguration (skapas av wizard, GIT-IGNORERAD!)
+├── requirements.txt           # Python-beroenden
+├── main.py                    # Huvudapplikation
+├── setup_wizard.py            # Interaktiv konfigurationsguide
+├── config.py                  # Konfigurationshantering
+├── mqtt_client.py             # MQTT-klient med säkerhet & felhantering
+├── audio_utils.py             # Ljudhantering med resurshantering
+├── audio_feedback/            # Feedback-ljud
+│   ├── start_listen.wav       # Ljud när inspelning startar
+│   └── end_listen.wav         # Ljud när inspelning slutar
+└── models/                    # Modeller (GIT-IGNORERADE, ladda ner manuellt)
+    ├── vosk-model-sv/         # Svensk Vosk STT-modell
+    ├── piper-sv/              # Svensk Piper TTS-modell
     └── wakewords/
-        └── sv/               # Lägg Porcupine .ppn här
+        └── sv/                # Porcupine wakeword-filer (.ppn)
 ```
+
+## Förbättringar & Best Practices
+
+### Säkerhet 🔒
+- **Miljövariabler**: Känslig data (API-nycklar, lösenord) lagras i `.env` istället för kod
+- **Input-validering**: Begränsningar på text- och payload-storlek för att förhindra DoS
+- **TLS-stöd**: Säker MQTT-kommunikation med TLS 1.2
+- **Resurshantering**: Automatisk cleanup vid fel för att undvika resursläckage
+- **Gitignore**: Känsliga filer exkluderas automatiskt från versionshantering
+
+### Prestanda ⚡
+- **Optimerad ljudhantering**: Effektiv bufferthantering och strömning
+- **Exponentiell backoff**: Smart återanslutningslogik för MQTT
+- **Graceful shutdown**: Säker avslutning av alla resurser
+- **Minimal minnesanvändning**: Context managers och explicit cleanup
+
+### Användarvänlighet 👥
+- **Interaktiv wizard**: Enkel konfiguration med validering och hjälptext
+- **Tydliga felmeddelanden**: Detaljerad information vid problem
+- **Emoji-indikationer**: Visuell feedback i loggar och wizard
+- **Omfattande loggning**: DEBUG, INFO, WARNING, ERROR nivåer
+
+### Kodkvalitet 📚
+- **Type hints**: Typannoteringar för bättre IDE-stöd och färre buggar
+- **Docstrings**: Dokumentation för alla klasser och metoder
+- **Custom exceptions**: Specifika exceptions för olika fel-typer
+- **Modulär struktur**: Separata moduler för olika ansvarsområden
+- **PEP 8**: Följer Python kodstandarder
+
+### Skalbarhet 📈
+- **Konfigurerbar**: Enkelt att anpassa för olika användningsfall
+- **Modulär design**: Lätt att utöka med nya funktioner
+- **MQTT-arkitektur**: Stödjer flera klienter och distribuerade system
+- **Lokal processing**: Offline STT/TTS minskar beroenden
+
+## Felsökning
+
+### Problem med MQTT-anslutning
+```bash
+# Kontrollera att MQTT broker körs
+mosquitto -v
+
+# Testa anslutning
+mosquitto_pub -h localhost -t test -m "hello"
+```
+
+### Problem med ljudenheter
+```python
+# Lista tillgängliga ljudenheter
+import pyaudio
+pa = pyaudio.PyAudio()
+for i in range(pa.get_device_count()):
+    print(i, pa.get_device_info_by_index(i)['name'])
+```
+
+### Debug-läge
+Sätt `LOG_LEVEL=DEBUG` i `.env` för detaljerad loggning.
 
 ## Licens
 MIT (se `LICENSE`).

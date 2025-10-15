@@ -1,94 +1,260 @@
-import os
-import json
-import pathlib
-
-CONFIG_FILE = "config.py"
-
-TEMPLATE = """\"\"\"
-Auto-genererad av setup_wizard.py
-\"\"\"
-
-MQTT_HOST = "{MQTT_HOST}"
-MQTT_PORT = {MQTT_PORT}
-MQTT_USERNAME = "{MQTT_USERNAME}"
-MQTT_PASSWORD = "{MQTT_PASSWORD}"
-MQTT_TLS = {MQTT_TLS}
-
-MQTT_TOPIC_COMMANDS = "{MQTT_TOPIC_COMMANDS}"
-MQTT_TOPIC_RESPONSES = "{MQTT_TOPIC_RESPONSES}"
-CLIENT_ID = "{CLIENT_ID}"
-
-PORCUPINE_ACCESS_KEY = "{PORCUPINE_ACCESS_KEY}"
-WAKEWORD_PATH = "{WAKEWORD_PATH}"
-
-VOSK_MODEL_PATH = "{VOSK_MODEL_PATH}"
-PIPER_MODEL_PATH = "{PIPER_MODEL_PATH}"
-PIPER_SPEAKER = {PIPER_SPEAKER}
-
-INPUT_DEVICE_INDEX = {INPUT_DEVICE_INDEX}
-OUTPUT_DEVICE_INDEX = {OUTPUT_DEVICE_INDEX}
-SAMPLE_RATE = {SAMPLE_RATE}
-RECORD_SECONDS_AFTER_WAKE = {RECORD_SECONDS_AFTER_WAKE}
-LOG_LEVEL = "{LOG_LEVEL}"
 """
+Setup wizard för rpi-n8n-voice-assistant.
 
-def ask(prompt, default=None, cast=str):
-    raw = input(f"{prompt} [{default}]: ") if default is not None else input(f"{prompt}: ")
-    if not raw and default is not None:
-        return default
-    return cast(raw)
+Guidar användaren genom initial konfiguration och skapar .env-fil.
+"""
+import os
+import sys
+import pathlib
+from typing import Optional, Callable
+
+ENV_FILE = ".env"
+
+def ask(prompt: str, default: Optional[str] = None, 
+        validator: Optional[Callable[[str], bool]] = None,
+        error_msg: str = "Ogiltigt värde, försök igen") -> str:
+    """
+    Ställ fråga till användaren med valfri validering.
+    
+    Args:
+        prompt: Fråga att visa
+        default: Standardvärde (None = obligatoriskt)
+        validator: Valideringsfunktion
+        error_msg: Felmeddelande vid ogiltig input
+        
+    Returns:
+        Användarsvar eller default
+    """
+    while True:
+        if default is not None:
+            display_default = default if default != "" else "(tom)"
+            user_input = input(f"{prompt} [{display_default}]: ").strip()
+            if not user_input:
+                return default
+        else:
+            user_input = input(f"{prompt}: ").strip()
+            if not user_input:
+                print("⚠️  Detta fält är obligatoriskt")
+                continue
+        
+        # Validera om validator finns
+        if validator and not validator(user_input):
+            print(f"⚠️  {error_msg}")
+            continue
+            
+        return user_input
+
+def validate_port(value: str) -> bool:
+    """Validera att port är giltigt nummer."""
+    try:
+        port = int(value)
+        return 1 <= port <= 65535
+    except ValueError:
+        return False
+
+def validate_sample_rate(value: str) -> bool:
+    """Validera sample rate."""
+    try:
+        rate = int(value)
+        return rate > 0
+    except ValueError:
+        return False
+
+def validate_seconds(value: str) -> bool:
+    """Validera sekunder."""
+    try:
+        seconds = int(value)
+        return 0 < seconds <= 60
+    except ValueError:
+        return False
 
 def main():
-    print("=== rpi-n8n-voice-assistant Setup Wizard ===")
+    """Huvudfunktion för setup wizard."""
+    print("=" * 70)
+    print("  🤖 RPI-N8N Voice Assistant - Setup Wizard")
+    print("=" * 70)
+    print("\nDenna guide hjälper dig att konfigurera din röstassistent.")
+    print("Tryck Enter för att acceptera standardvärden [inom hakparenteser].\n")
 
-    # Ensure folders
-    pathlib.Path("models/wakewords/sv").mkdir(parents=True, exist_ok=True)
-    pathlib.Path("models/vosk-model-sv").mkdir(parents=True, exist_ok=True)
-    pathlib.Path("models/piper-sv").mkdir(parents=True, exist_ok=True)
-    pathlib.Path("audio_feedback").mkdir(parents=True, exist_ok=True)
+    # Skapa nödvändiga mappar
+    print("📁 Skapar mappar...")
+    try:
+        pathlib.Path("models/wakewords/sv").mkdir(parents=True, exist_ok=True)
+        pathlib.Path("models/vosk-model-sv").mkdir(parents=True, exist_ok=True)
+        pathlib.Path("models/piper-sv").mkdir(parents=True, exist_ok=True)
+        pathlib.Path("audio_feedback").mkdir(parents=True, exist_ok=True)
+        print("✓ Mappar skapade")
+    except Exception as e:
+        print(f"⚠️  Varning: Kunde inte skapa mappar: {e}")
 
-    print("\nLägg dina modeller här efter nedladdning:")
-    print(" - Vosk (svenska): models/vosk-model-sv/")
-    print(" - Piper (svenska): models/piper-sv/ (onnx + .json)")
-    print(" - Porcupine wakeword .ppn: models/wakewords/sv/assistans.ppn (eller annat filnamn)")
+    print("\n" + "─" * 70)
+    print("📥 VIKTIGT: Ladda ner modeller manuellt")
+    print("─" * 70)
+    print("Lägg dina modeller här efter nedladdning:")
+    print("  • Vosk (svenska STT): models/vosk-model-sv/")
+    print("    → https://alphacephei.com/vosk/models")
+    print("  • Piper (svenska TTS): models/piper-sv/ (.onnx + .json)")
+    print("    → https://github.com/rhasspy/piper#voices")
+    print("  • Porcupine wakeword (.ppn): models/wakewords/sv/")
+    print("    → https://picovoice.ai/platform/porcupine/")
 
-    # Config questions
-    cfg = {}
-    cfg["MQTT_HOST"] = ask("MQTT host", "localhost")
-    cfg["MQTT_PORT"] = ask("MQTT port", 1883, int)
-    cfg["MQTT_USERNAME"] = ask("MQTT username", "")
-    cfg["MQTT_PASSWORD"] = ask("MQTT password", "")
-    cfg["MQTT_TLS"] = ask("Use TLS? true/false", "false").lower() == "true"
+    print("\n" + "─" * 70)
+    print("⚙️  MQTT Konfiguration")
+    print("─" * 70)
+    
+    mqtt_host = ask("MQTT broker host", "localhost")
+    mqtt_port = ask(
+        "MQTT broker port", 
+        "1883",
+        validator=validate_port,
+        error_msg="Port måste vara mellan 1 och 65535"
+    )
+    mqtt_username = ask("MQTT användarnamn", "")
+    mqtt_password = ask("MQTT lösenord", "")
+    mqtt_tls = ask("Använd TLS? (true/false)", "false").lower()
+    mqtt_tls = "True" if mqtt_tls in ("true", "yes", "1") else "False"
 
-    cfg["MQTT_TOPIC_COMMANDS"] = ask("Commands topic", "rpi/commands/text")
-    cfg["MQTT_TOPIC_RESPONSES"] = ask("Responses topic", "rpi/responses/text")
-    cfg["CLIENT_ID"] = ask("MQTT client id", "rpi-n8n-voice-assistant")
+    print("\n" + "─" * 70)
+    print("📡 MQTT Topics")
+    print("─" * 70)
+    
+    topic_commands = ask("Commands topic", "rpi/commands/text")
+    topic_responses = ask("Responses topic", "rpi/responses/text")
+    client_id = ask("MQTT client ID", "rpi-n8n-voice-assistant")
 
-    cfg["PORCUPINE_ACCESS_KEY"] = ask("Picovoice Access Key", "")
-    cfg["WAKEWORD_PATH"] = ask("Wakeword path", "models/wakewords/sv/assistans.ppn")
+    print("\n" + "─" * 70)
+    print("🎤 Röstdetektering (Porcupine)")
+    print("─" * 70)
+    print("⚠️  Notera: PORCUPINE_ACCESS_KEY är känslig och ska ej delas!")
+    
+    porcupine_key = ask("Picovoice Access Key (obligatorisk)")
+    if not porcupine_key:
+        print("❌ Access key krävs för att använda Porcupine!")
+        sys.exit(1)
+    
+    wakeword_path = ask("Wakeword fil (.ppn)", "models/wakewords/sv/assistans.ppn")
 
-    cfg["VOSK_MODEL_PATH"] = ask("Vosk model path", "models/vosk-model-sv")
-    cfg["PIPER_MODEL_PATH"] = ask("Piper model path", "models/piper-sv")
-    speaker = ask("Piper speaker (tom = None)", "")
-    cfg["PIPER_SPEAKER"] = "None" if speaker.strip() == "" else repr(speaker.strip())
+    print("\n" + "─" * 70)
+    print("🗣️  Speech-to-Text och Text-to-Speech")
+    print("─" * 70)
+    
+    vosk_path = ask("Vosk model sökväg", "models/vosk-model-sv")
+    piper_path = ask("Piper model sökväg", "models/piper-sv")
+    piper_speaker = ask("Piper speaker ID (tom = auto)", "")
 
-    inp = ask("Input device index (tom = None)", "")
-    outp = ask("Output device index (tom = None)", "")
-    cfg["INPUT_DEVICE_INDEX"] = "None" if inp.strip() == "" else int(inp)
-    cfg["OUTPUT_DEVICE_INDEX"] = "None" if outp.strip() == "" else int(outp)
-    cfg["SAMPLE_RATE"] = ask("Sample rate", 16000, int)
-    cfg["RECORD_SECONDS_AFTER_WAKE"] = ask("Record seconds after wake", 6, int)
-    cfg["LOG_LEVEL"] = ask("Log level", "INFO")
+    print("\n" + "─" * 70)
+    print("🔊 Ljudinställningar")
+    print("─" * 70)
+    print("Tip: Lämna tom för standardenheter")
+    
+    input_dev = ask("Input device index (tom = standard)", "")
+    output_dev = ask("Output device index (tom = standard)", "")
+    
+    sample_rate = ask(
+        "Sample rate (Hz)",
+        "16000",
+        validator=validate_sample_rate,
+        error_msg="Sample rate måste vara positiv"
+    )
+    
+    record_seconds = ask(
+        "Inspelningstid efter wakeword (sekunder)",
+        "6",
+        validator=validate_seconds,
+        error_msg="Måste vara mellan 1 och 60 sekunder"
+    )
 
-    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
-        f.write(TEMPLATE.format(**cfg))
+    print("\n" + "─" * 70)
+    print("📝 Loggning")
+    print("─" * 70)
+    
+    log_level = ask("Log level (DEBUG/INFO/WARNING/ERROR)", "INFO")
 
-    print(f"\nSkrev {CONFIG_FILE}.")
-    print("\n== Modellnedladdning (manuellt) ==")
-    print("Vosk svenskt språk: https://alphacephei.com/vosk/models (svenska). Packa upp i models/vosk-model-sv/.")
-    print("Piper svenska röster: https://github.com/rhasspy/piper#voices. Lägg .onnx + .json i models/piper-sv/.")
-    print("Porcupine: https://picovoice.ai/platform/porcupine/ (få access key & .ppn).")
-    print("\nKlar. Kör sedan: python3 main.py")
+    # Skriv .env fil
+    print("\n" + "─" * 70)
+    print("💾 Sparar konfiguration...")
+    print("─" * 70)
+    
+    try:
+        # SÄKERHETSNOTERING: .env-filen innehåller känslig information i klartext.
+        # Detta är standard för miljövariabel-filer och anses säkert så länge:
+        # 1. Filen är exkluderad från versionshantering (.gitignore)
+        # 2. Filbehörigheter är korrekta (chmod 600 rekommenderas)
+        # 3. Systemet är säkert (användarautentisering, ingen obehörig åtkomst)
+        # För produktionsmiljöer bör secrets managers (Vault, AWS Secrets Manager) övervägas.
+        
+        with open(ENV_FILE, "w", encoding="utf-8") as f:
+            f.write("# MQTT Configuration\n")
+            f.write(f"MQTT_HOST={mqtt_host}\n")
+            f.write(f"MQTT_PORT={mqtt_port}\n")
+            f.write(f"MQTT_USERNAME={mqtt_username}\n")
+            f.write(f"MQTT_PASSWORD={mqtt_password}\n")  # nosec - intentional for .env file
+            f.write(f"MQTT_TLS={mqtt_tls}\n\n")
+            
+            f.write("# MQTT Topics\n")
+            f.write(f"MQTT_TOPIC_COMMANDS={topic_commands}\n")
+            f.write(f"MQTT_TOPIC_RESPONSES={topic_responses}\n")
+            f.write(f"CLIENT_ID={client_id}\n\n")
+            
+            f.write("# Picovoice Porcupine (KÄNSLIG - håll privat!)\n")
+            f.write(f"PORCUPINE_ACCESS_KEY={porcupine_key}\n\n")
+            
+            f.write("# Model Paths\n")
+            f.write(f"WAKEWORD_PATH={wakeword_path}\n")
+            f.write(f"VOSK_MODEL_PATH={vosk_path}\n")
+            f.write(f"PIPER_MODEL_PATH={piper_path}\n")
+            if piper_speaker:
+                f.write(f"PIPER_SPEAKER={piper_speaker}\n")
+            f.write("\n")
+            
+            f.write("# Audio Settings\n")
+            if input_dev:
+                f.write(f"INPUT_DEVICE_INDEX={input_dev}\n")
+            if output_dev:
+                f.write(f"OUTPUT_DEVICE_INDEX={output_dev}\n")
+            f.write(f"SAMPLE_RATE={sample_rate}\n")
+            f.write(f"RECORD_SECONDS_AFTER_WAKE={record_seconds}\n\n")
+            
+            f.write("# Logging\n")
+            f.write(f"LOG_LEVEL={log_level}\n")
+
+        print(f"✓ Konfiguration sparad i {ENV_FILE}")
+        
+        # Säkra filbehörigheter (endast ägaren kan läsa/skriva)
+        try:
+            os.chmod(ENV_FILE, 0o600)
+            print(f"✓ Filbehörigheter satta till 600 (endast ägare kan läsa)")
+        except Exception as e:
+            print(f"⚠️  Varning: Kunde inte sätta filbehörigheter: {e}")
+        
+        # Säkerhetsvarning
+        print("\n" + "─" * 70)
+        print("🔒 SÄKERHETSVARNING")
+        print("─" * 70)
+        print(f"⚠️  {ENV_FILE} innehåller känslig information (API-nycklar, lösenord)")
+        print(f"⚠️  Dela ALDRIG denna fil eller committa den till Git!")
+        print(f"⚠️  Filen är redan exkluderad i .gitignore")
+        print(f"⚠️  Filbehörigheter: 600 (rekommenderas för produktion)")
+        
+        print("\n" + "─" * 70)
+        print("✅ Setup klar!")
+        print("─" * 70)
+        print("\n📋 Nästa steg:")
+        print("  1. Ladda ner och installera modellerna (se länkar ovan)")
+        print("  2. Starta applikationen: python3 main.py")
+        print("  3. Sätt upp ditt n8n-flöde (se README.md)")
+        print("\n🎉 Lycka till!")
+        
+    except Exception as e:
+        print(f"\n❌ Fel vid sparande av konfiguration: {e}")
+        sys.exit(1)
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\n\n⚠️  Setup avbruten av användare")
+        sys.exit(1)
+    except Exception as e:
+        print(f"\n❌ Oväntat fel: {e}")
+        sys.exit(1)
