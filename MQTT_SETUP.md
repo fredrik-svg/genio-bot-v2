@@ -1,12 +1,12 @@
 # MQTT Setup Guide - Sätta upp en fungerande MQTT miljö
 
-Denna guide hjälper dig att sätta upp en komplett MQTT-miljö för röstassistenten, inklusive MQTT broker (Mosquitto) och integration med n8n.
+Denna guide hjälper dig att sätta upp en komplett MQTT-miljö för röstassistenten med HiveMQ Cloud och n8n.
 
 ## 📋 Innehållsförteckning
 
 1. [Översikt](#översikt)
-2. [Metod 1: Docker Compose (Rekommenderas)](#metod-1-docker-compose-rekommenderas)
-3. [Metod 2: Manuell installation](#metod-2-manuell-installation)
+2. [Metod 1: HiveMQ Cloud (Rekommenderas för produktion)](#metod-1-hivemq-cloud-rekommenderas-för-produktion)
+3. [Metod 2: Lokal Mosquitto (Endast för testning)](#metod-2-lokal-mosquitto-endast-för-testning)
 4. [Konfigurera n8n för MQTT](#konfigurera-n8n-för-mqtt)
 5. [Testa MQTT-anslutningen](#testa-mqtt-anslutningen)
 6. [Felsökning](#felsökning)
@@ -15,28 +15,121 @@ Denna guide hjälper dig att sätta upp en komplett MQTT-miljö för röstassist
 
 För att röstassistenten ska fungera behöver du:
 
-1. **MQTT Broker** (Mosquitto) - fungerar som meddelandehanterare (på ai.genio-bot.com)
-2. **n8n** - för att bearbeta röstkommandon och skapa svar (på ai.genio-bot.com)
+1. **MQTT Broker** - HiveMQ Cloud (molnbaserad, säker, ingen installation behövs)
+2. **n8n** - för att bearbeta röstkommandon och skapa svar (kan köras lokalt eller i molnet)
 3. **Röstassistenten** (denna applikation) - körs på Raspberry Pi
 
-**⚠️ VIKTIGT:** n8n och MQTT broker körs på **ai.genio-bot.com**, inte lokalt på din Raspberry Pi!
+**☁️ VIKTIGT:** Vi använder **HiveMQ Cloud** som MQTT broker - ingen lokal installation behövs!
 
 ```
 ┌─────────────────┐      MQTT Topics:           ┌────────────────────────┐
-│  Raspberry Pi   │  ──► rpi/commands/text ──►  │   ai.genio-bot.com     │
-│ (Röstassistent) │                              │  ┌──────────────┐      │
-│                 │  ◄── rpi/responses/text ◄──  │  │     n8n      │      │
-└─────────────────┘                              │  └──────────────┘      │
-         │                                       │         │              │
-         └──────────► MQTT Broker (Mosquitto) ◄─┴─────────┘              │
-                      (ai.genio-bot.com:1883)   └────────────────────────┘
+│  Raspberry Pi   │  ──► rpi/commands/text ──►  │   HiveMQ Cloud         │
+│ (Röstassistent) │                              │   (TLS port 8883)      │
+│                 │  ◄── rpi/responses/text ◄──  │                        │
+└─────────────────┘                              └────────────────────────┘
+         │                                                   ▲
+         │                                                   │
+         └───────────────────────────────────────────────────┘
+                  Säker TLS-anslutning
+                                               
+                  ┌─────────────┐
+                  │     n8n     │ ◄─── Ansluter till HiveMQ Cloud
+                  │  (lokalt/   │      med samma uppgifter
+                  │   moln)     │
+                  └─────────────┘
 ```
 
-## 🐳 Metod 1: Docker Compose (För lokal testning)
+## ☁️ Metod 1: HiveMQ Cloud (Rekommenderas för produktion)
 
-**⚠️ OBS:** Detta är **ENDAST** för lokal utveckling och testning. I produktionsmiljön körs n8n och MQTT broker redan på **ai.genio-bot.com**.
+**🚀 REKOMMENDERAT:** HiveMQ Cloud är en molnbaserad MQTT broker som inte kräver någon installation eller underhåll.
 
-Om du vill testa lokalt kan du sätta upp både Mosquitto och n8n med Docker Compose:
+### Fördelar med HiveMQ Cloud
+- ✅ Ingen installation eller konfiguration av MQTT broker
+- ✅ Automatisk skalning och hög tillgänglighet
+- ✅ Inbyggd TLS-säkerhet
+- ✅ Gratis tier (100 anslutningar, 10 GB/månad)
+- ✅ Webbaserad administrationskonsol
+- ✅ Fungerar från vilken plats som helst (perfekt för IoT)
+
+### Steg 1: Skapa HiveMQ Cloud konto
+
+1. **Gå till HiveMQ Cloud:**
+   - Besök: https://console.hivemq.cloud/
+   - Skapa ett gratis konto
+
+2. **Skapa ett nytt kluster:**
+   - Klicka på "Create Cluster"
+   - Välj "Free" plan (perfekt för detta projekt)
+   - Välj en region nära dig (för bästa latens)
+   - Ge ditt kluster ett namn
+   - Klicka på "Create"
+
+3. **Anteckna anslutningsinformation:**
+   - **Cluster URL**: Hittas på kluster-dashboard (t.ex. `abc123.hivemq.cloud`)
+   - **Port**: `8883` (TLS/SSL)
+   - **WebSocket Port**: `8884` (om du behöver WebSocket)
+
+### Steg 2: Skapa användare för MQTT-åtkomst
+
+1. **Navigera till "Access Management"** i din kluster-dashboard
+2. **Klicka på "Add Credentials"**
+3. **Skapa användare för röstassistenten:**
+   - **Username**: `rpi-voice-assistant` (eller valfritt namn)
+   - **Password**: Generera ett starkt lösenord
+   - **Permissions**: Lämna som standard (full åtkomst)
+   - Klicka på "Add"
+4. **Spara uppgifterna säkert** - du kommer behöva dem senare
+
+**💡 Tips:** Du kan skapa olika användare för olika enheter (en för Raspberry Pi, en för n8n, etc.) för bättre säkerhet och spårbarhet.
+
+### Steg 3: Konfigurera röstassistenten
+
+Kör setup wizard och ange dina HiveMQ Cloud uppgifter:
+
+```bash
+cd genio-bot-v2
+source venv/bin/activate
+python3 setup_wizard.py
+```
+
+**Ange följande värden:**
+- **HiveMQ Cloud cluster URL**: Din kluster-URL (t.ex. `abc123.hivemq.cloud`)
+- **MQTT broker port**: `8883`
+- **HiveMQ Cloud användarnamn**: Det användarnamn du skapade
+- **HiveMQ Cloud lösenord**: Det lösenord du skapade
+- **Använd TLS**: `true`
+
+Wizarden kommer att spara dessa uppgifter i `.env`-filen.
+
+### Steg 4: Testa anslutningen
+
+```bash
+# Installera mosquitto-clients om du inte har det
+sudo apt install mosquitto-clients
+
+# Testa anslutning (ersätt med dina uppgifter)
+mosquitto_pub -h abc123.hivemq.cloud -p 8883 \
+  --capath /etc/ssl/certs/ \
+  -u rpi-voice-assistant -P ditt-lösenord \
+  -t test -m "Hello from Raspberry Pi"
+```
+
+Om du ser inga fel är anslutningen lyckad! ✅
+
+### Steg 5: Övervaka anslutningar i HiveMQ Cloud
+
+1. Gå tillbaka till HiveMQ Cloud konsolen
+2. Navigera till "Overview" för ditt kluster
+3. Kontrollera "Connected Clients" - du bör se din anslutning
+4. Under "Metrics" kan du se meddelanden som skickas och tas emot
+
+**🎉 Klart!** Din MQTT broker är nu uppsatt och redo att användas.
+
+## 🐳 Metod 2: Lokal Mosquitto (Endast för testning)
+
+**⚠️ OBS:** Detta är **ENDAST** för lokal utveckling och offline-testning. För produktion, använd HiveMQ Cloud (Metod 1).
+
+Om du vill testa lokalt utan internetanslutning kan du sätta upp Mosquitto med Docker Compose:
 
 ### Steg 1: Installera Docker och Docker Compose
 
@@ -104,59 +197,25 @@ source venv/bin/activate
 python3 setup_wizard.py
 ```
 
-**För anslutning till produktionsservern (ai.genio-bot.com):**
-- **MQTT broker host**: `ai.genio-bot.com`
-- **MQTT broker port**: `1883`
-- **MQTT användarnamn**: (lämna tom eller använd ditt användarnamn)
-- **MQTT lösenord**: (lämna tom eller använd ditt lösenord)
-- **Använd TLS**: `false` (eller `true` om konfigurerat)
-
-**För lokal testning:**
+**För lokal testning (utan TLS):**
 - **MQTT broker host**: `localhost`
 - **MQTT broker port**: `1883`
 - **MQTT användarnamn**: (lämna tom)
 - **MQTT lösenord**: (lämna tom)
 - **Använd TLS**: `false`
 
-## 🔧 Metod 2: Anslut till befintlig server (ai.genio-bot.com)
+**Viktigt:** Lokal Mosquitto kräver inte TLS och använder port 1883. Detta är ENDAST för testning!
 
-**⚠️ REKOMMENDERAT:** För normal användning, anslut direkt till **ai.genio-bot.com** där n8n och MQTT broker redan körs.
+### Steg 4: Starta röstassistenten
 
-Du behöver **INTE** installera Mosquitto eller n8n lokalt. Hoppa direkt till [Konfigurera röstassistenten](#konfigurera-röstassistenten-för-produktionsservern).
-
-### Konfigurera röstassistenten för produktionsservern
-
-1. **Kör setup wizard:**
-```bash
-source venv/bin/activate
-python3 setup_wizard.py
-```
-
-2. **Använd följande värden:**
-   - **MQTT broker host**: `ai.genio-bot.com` (standard)
-   - **MQTT broker port**: `1883`
-   - **MQTT användarnamn**: (lämna tom eller be din administratör om uppgifter)
-   - **MQTT lösenord**: (lämna tom eller be din administratör om uppgifter)
-   - **Använd TLS**: `false` (eller `true` beroende på serverkonfiguration)
-
-3. **Testa anslutningen:**
-```bash
-# Installera mosquitto-clients om du inte har det
-sudo apt install mosquitto-clients
-
-# Testa anslutning till servern
-mosquitto_pub -h ai.genio-bot.com -t "test/connection" -m "Hello from Raspberry Pi"
-```
-
-4. **Starta röstassistenten:**
 ```bash
 source venv/bin/activate
 python3 main.py
 ```
 
-**Klart!** Din röstassistent kommer nu att kommunicera med n8n på ai.genio-bot.com via MQTT.
+**Klart!** Din röstassistent kommer nu att kommunicera via din lokala MQTT broker.
 
-## 🔧 Metod 3: Manuell installation (För lokal testning)
+## 🔧 Metod 3: Manuell Mosquitto installation (För lokal testning)
 
 Om du föredrar att installera Mosquitto direkt på systemet för lokal utveckling.
 
@@ -246,29 +305,65 @@ n8n kommer nu vara tillgängligt på: http://localhost:5678
 
 ## 🔌 Konfigurera n8n för MQTT
 
-**📍 n8n är tillgänglig på:** http://ai.genio-bot.com:5678 (kontakta administratören för inloggningsuppgifter)
+n8n kan köras lokalt eller i molnet. Båda fallen ansluter till HiveMQ Cloud.
 
-### Steg 1: Skapa ett nytt workflow i n8n
+### Installera n8n (om du inte redan har det)
 
-1. Öppna n8n i din webbläsare: http://ai.genio-bot.com:5678
-2. Logga in med dina uppgifter
-3. Skapa ett nytt workflow
+**Alternativ A: Docker (rekommenderas)**
+```bash
+docker run -d --name n8n \
+  -p 5678:5678 \
+  -v ~/.n8n:/home/node/.n8n \
+  --restart unless-stopped \
+  n8nio/n8n
+```
+
+**Alternativ B: npm**
+```bash
+npm install -g n8n
+n8n start
+```
+
+n8n blir tillgängligt på: http://localhost:5678
+
+### Steg 1: Skapa MQTT Credentials i n8n
+
+Innan du konfigurerar noder behöver du skapa credentials för HiveMQ Cloud:
+
+1. I n8n, gå till **Settings** → **Credentials**
+2. Klicka på **"New Credential"**
+3. Sök efter och välj **"MQTT"**
+4. Konfigurera credentials:
+   - **Name**: `HiveMQ Cloud`
+   - **Protocol**: `mqtt`
+   - **Host**: Din HiveMQ Cloud URL (t.ex. `abc123.hivemq.cloud`)
+   - **Port**: `8883`
+   - **Username**: Ditt HiveMQ Cloud användarnamn
+   - **Password**: Ditt HiveMQ Cloud lösenord
+   - **SSL/TLS**: ✅ Aktivera
+   - **CA Certificate**: Lämna tom (använder systemets CA)
+5. Klicka på **"Save"**
+
+### Steg 2: Skapa ett nytt workflow i n8n
+
+1. Öppna n8n i din webbläsare
+2. Klicka på **"New Workflow"**
+3. Ge workflowet ett namn (t.ex. "Voice Assistant")
 4. Lägg till noderna enligt schemat nedan
 
-### Steg 2: Lägg till MQTT Trigger Node
+### Steg 3: Lägg till MQTT Trigger Node
 
 1. Klicka på "+" för att lägga till en ny nod
-2. Sök efter "MQTT Trigger"
+2. Sök efter **"MQTT Trigger"**
 3. Konfigurera:
-   - **Broker**: `localhost` (n8n och MQTT broker körs på samma server)
-   - **Port**: `1883`
-   - **Protocol**: `mqtt`
+   - **Credentials**: Välj `HiveMQ Cloud` (som du skapade i Steg 1)
    - **Topics**: `rpi/commands/text`
    - **Client ID**: `n8n-mqtt-trigger` (valfritt)
+   - **QoS**: `0` (eller högre om du behöver garanterad leverans)
 
-**⚠️ Observera:** Använd `localhost` i n8n eftersom n8n och Mosquitto körs på samma server (ai.genio-bot.com). Raspberry Pi:n ansluter dock till `ai.genio-bot.com`.
+**✅ Tips:** Om du använder samma HiveMQ Cloud kluster för flera n8n instanser, ge varje instans ett unikt Client ID.
 
-### Steg 3: Lägg till processlogik
+### Steg 4: Lägg till processlogik
 
 Exempel med en Code node för att bearbeta kommandon:
 
@@ -302,18 +397,17 @@ return [{
 }];
 ```
 
-### Steg 4: Lägg till MQTT Publish Node
+### Steg 5: Lägg till MQTT Publish Node
 
-1. Lägg till en "MQTT" nod efter Code-noden
+1. Lägg till en **"MQTT"** nod efter Code-noden
 2. Konfigurera:
-   - **Broker**: `localhost` (n8n och MQTT broker körs på samma server)
-   - **Port**: `1883`
-   - **Protocol**: `mqtt`
+   - **Credentials**: Välj `HiveMQ Cloud` (samma som Trigger Node)
    - **Topic**: `rpi/responses/text`
    - **Message**: `={{ $json }}`
    - **QoS**: `0`
+   - **Retain**: `false`
 
-### Steg 5: Aktivera workflow
+### Steg 6: Aktivera workflow
 
 Klicka på "Active" i övre högra hörnet för att aktivera workflowet.
 
@@ -321,14 +415,15 @@ Klicka på "Active" i övre högra hörnet för att aktivera workflowet.
 
 ### Test 1: Automatisk test (rekommenderas)
 
-Använd det medföljande testskriptet:
+Använd det medföljande testskriptet med dina HiveMQ Cloud uppgifter:
 
 ```bash
-./test-mqtt-connection.sh
+# Syntax: ./test-mqtt-connection.sh <host> <port> <username> <password>
+./test-mqtt-connection.sh abc123.hivemq.cloud 8883 your-username your-password
 ```
 
 Detta skript testar:
-- Anslutning till MQTT broker
+- Anslutning till MQTT broker med TLS
 - Publicera och prenumerera på meddelanden
 - Röstassistent topics (rpi/commands/text)
 
@@ -336,23 +431,38 @@ Detta skript testar:
 
 Simulera ett kommando från röstassistenten:
 
-**För anslutning till ai.genio-bot.com:**
+**För anslutning till HiveMQ Cloud:**
 ```bash
-mosquitto_pub -h ai.genio-bot.com -t "rpi/commands/text" \
+# Sätt dina uppgifter
+MQTT_HOST="abc123.hivemq.cloud"
+MQTT_USER="your-username"
+MQTT_PASS="your-password"
+
+# Publicera ett testkommando
+mosquitto_pub -h $MQTT_HOST -p 8883 \
+  --capath /etc/ssl/certs/ \
+  -u $MQTT_USER -P $MQTT_PASS \
+  -t "rpi/commands/text" \
   -m '{"text":"hej", "timestamp":"2024-01-01T12:00:00"}'
 ```
 
-Du bör se svaret på response-topic:
+Lyssna på svar från n8n:
 
 ```bash
-mosquitto_sub -h ai.genio-bot.com -t "rpi/responses/text" -v
+# I en separat terminal, prenumerera på svar
+mosquitto_sub -h $MQTT_HOST -p 8883 \
+  --capath /etc/ssl/certs/ \
+  -u $MQTT_USER -P $MQTT_PASS \
+  -t "rpi/responses/text" -v
 ```
 
-**För lokal testning:**
+**För lokal testning (utan TLS):**
 ```bash
+# Publicera
 mosquitto_pub -h localhost -t "rpi/commands/text" \
   -m '{"text":"hej", "timestamp":"2024-01-01T12:00:00"}'
 
+# Prenumerera
 mosquitto_sub -h localhost -t "rpi/responses/text" -v
 ```
 
@@ -373,14 +483,48 @@ För enklare testning och debugging, installera MQTT Explorer:
 
 **På Windows/Mac/Linux:**
 - Ladda ner från: https://mqtt-explorer.com/
-- Anslut till din broker: `ai.genio-bot.com:1883` (för produktionsservern) eller `localhost:1883` (för lokal testning)
+- Konfigurera anslutning:
+  - **Host**: Din HiveMQ Cloud URL (t.ex. `abc123.hivemq.cloud`)
+  - **Port**: `8883`
+  - **Protocol**: `mqtts://` (MQTT over TLS)
+  - **Username**: Ditt HiveMQ Cloud användarnamn
+  - **Password**: Ditt HiveMQ Cloud lösenord
+  - **SSL/TLS**: ✅ Aktivera
 - Prenumerera på `rpi/#` för att se all trafik
 
-## 🔒 Säker konfiguration (Produktion)
+### Test 5: HiveMQ Cloud Console
 
-För produktionsmiljöer bör du aktivera autentisering.
+Du kan också övervaka meddelanden direkt i HiveMQ Cloud konsolen:
 
-### Skapa användarnamn och lösenord
+1. Gå till din kluster-dashboard på https://console.hivemq.cloud/
+2. Navigera till **"Web Client"** i sidomenyn
+3. Anslut med dina credentials
+4. Prenumerera på `rpi/#` eller specifika topics
+5. Publicera testmeddelanden för att verifiera flödet
+
+## 🔒 Säkerhet och Best Practices
+
+### HiveMQ Cloud (Produktion)
+
+HiveMQ Cloud hanterar säkerhet automatiskt:
+
+- ✅ **TLS-kryptering**: Alltid aktiverad (port 8883)
+- ✅ **Autentisering**: Användarnamn och lösenord krävs
+- ✅ **Access Control**: Hantera användare via HiveMQ Cloud Console
+- ✅ **Certifikat**: Hanteras automatiskt av HiveMQ
+
+**Rekommenderade åtgärder:**
+1. **Använd starka lösenord** för alla MQTT-användare
+2. **Skapa separata användare** för olika enheter/tjänster
+3. **Rotera lösenord** regelbundet
+4. **Övervaka anslutningar** via HiveMQ Cloud Console
+5. **Sätt upp alerting** för ovanlig aktivitet
+
+### Lokal Mosquitto (Endast testning)
+
+Om du kör lokal Mosquitto för testning och vill säkra den:
+
+**Skapa användarnamn och lösenord:**
 
 ```bash
 # Skapa lösenordsfil (första användaren)
@@ -390,7 +534,7 @@ sudo mosquitto_passwd -c /etc/mosquitto/passwd mqttuser
 sudo mosquitto_passwd /etc/mosquitto/passwd n8nuser
 ```
 
-### Uppdatera Mosquitto-konfiguration
+**Uppdatera Mosquitto-konfiguration:**
 
 ```bash
 sudo nano /etc/mosquitto/conf.d/custom.conf
@@ -434,84 +578,142 @@ MQTT_PASSWORD=ditt_lösenord
 
 ## 🐛 Felsökning
 
-### Problem: Kan inte ansluta till MQTT broker
+### Problem: Kan inte ansluta till HiveMQ Cloud
 
-**Kontrollera att Mosquitto körs:**
+**Kontrollera credentials:**
+```bash
+# Testa anslutning med debug-flagga
+mosquitto_pub -h your-cluster.hivemq.cloud -p 8883 \
+  --capath /etc/ssl/certs/ \
+  -u your-username -P your-password \
+  -t "test" -m "hello" -d
+```
+
+**Vanliga fel:**
+1. **Fel användarnamn/lösenord**: Verifiera i HiveMQ Cloud Console → Access Management
+2. **Fel cluster URL**: Kontrollera URL i HiveMQ Cloud Console → Overview
+3. **TLS-certifikatfel**: Se till att `ca-certificates` är installerat (`sudo apt install ca-certificates`)
+4. **Port blockerad**: Kontrollera att port 8883 är öppen i din brandvägg
+
+**Kontrollera nätverksanslutning:**
+```bash
+# Ping HiveMQ Cloud
+ping your-cluster.hivemq.cloud
+
+# Kontrollera TLS-anslutning
+openssl s_client -connect your-cluster.hivemq.cloud:8883
+```
+
+**Kontrollera HiveMQ Cloud status:**
+- Gå till HiveMQ Cloud Console
+- Kontrollera att klustret är "Running" (grön status)
+- Kontrollera "Connected Clients" för aktiva anslutningar
+
+### Problem: n8n kan inte ansluta till HiveMQ Cloud
+
+**Kontrollera n8n MQTT Credentials:**
+1. I n8n, gå till **Settings** → **Credentials**
+2. Hitta din HiveMQ Cloud credential
+3. Klicka på "Test" för att verifiera anslutningen
+4. Om testet misslyckas, kontrollera:
+   - Host ska vara UTAN `mqtt://` eller `mqtts://` prefix
+   - Port ska vara `8883`
+   - SSL/TLS ska vara aktiverad
+   - Username och Password ska matcha HiveMQ Cloud
+
+**Kontrollera n8n loggar:**
 ```bash
 # Om Docker:
-docker compose ps
+docker logs n8n
 
-# Om systemd:
-sudo systemctl status mosquitto
+# Om npm:
+# Loggar visas i terminalen där n8n körs
 ```
 
-**Kontrollera portar:**
+### Problem: Röstassistenten kan inte ansluta
+
+**Kontrollera .env-filen:**
 ```bash
-sudo netstat -tulpn | grep 1883
-# Eller
-sudo ss -tulpn | grep 1883
+cat .env | grep MQTT
 ```
 
-**Testa lokal anslutning:**
+Ska visa:
+```
+MQTT_HOST=your-cluster.hivemq.cloud
+MQTT_PORT=8883
+MQTT_USERNAME=your-username
+MQTT_PASSWORD=your-password
+MQTT_TLS=True
+```
+
+**Kör röstassistenten med debug:**
 ```bash
-mosquitto_pub -h localhost -t "test" -m "hello" -d
+# Sätt LOG_LEVEL=DEBUG i .env
+LOG_LEVEL=DEBUG python3 main.py
 ```
 
-### Problem: n8n kan inte ansluta till Mosquitto
-
-**På produktionsservern (ai.genio-bot.com):**
-- n8n och Mosquitto körs på samma server, använd `localhost` i n8n
-- Kontakta administratören om problem uppstår
-
-**Om du använrar lokal Docker Compose:**
-- Använd service-namnet `mosquitto` istället för `localhost` i n8n
-- Kontrollera att båda containers är på samma nätverk
-
-**Om olika maskiner:**
-- Kontrollera brandvägg: `sudo ufw allow 1883/tcp`
-- Använd rätt IP-adress eller domännamn (ai.genio-bot.com)
-- Testa med: `mosquitto_pub -h ai.genio-bot.com -t "test" -m "hello"`
+**Vanliga problem:**
+1. **TLS=False**: HiveMQ Cloud kräver TLS, sätt `MQTT_TLS=True`
+2. **Fel port**: Ska vara `8883`, inte `1883`
+3. **Tomma credentials**: Användarnamn och lösenord får inte vara tomma
 
 ### Problem: Meddelanden går inte fram
 
-**Kontrollera topics:**
+**Kontrollera topics i HiveMQ Cloud:**
+1. Gå till HiveMQ Cloud Console → Web Client
+2. Anslut med dina credentials
+3. Prenumerera på `#` (alla topics)
+4. Publicera ett testmeddelande från röstassistenten
+5. Kontrollera att meddelandet syns i Web Client
+
+**Prenumerera via kommandorad:**
 ```bash
 # Prenumerera på alla topics för debugging
-mosquitto_sub -h localhost -t "#" -v
+mosquitto_sub -h your-cluster.hivemq.cloud -p 8883 \
+  --capath /etc/ssl/certs/ \
+  -u your-username -P your-password \
+  -t "#" -v
 ```
 
 **Kontrollera loggar:**
 ```bash
-# Mosquitto Docker:
-docker compose logs mosquitto
-
-# Mosquitto systemd:
-sudo tail -f /var/log/mosquitto/mosquitto.log
+# Röstassistent:
+# Sätt LOG_LEVEL=DEBUG i .env och kör
+python3 main.py
 
 # n8n:
-docker compose logs n8n
-
-# Röstassistent:
-# Sätt LOG_LEVEL=DEBUG i .env
+docker logs n8n  # Om Docker
+# Eller kontrollera terminal där n8n körs
 ```
 
-### Problem: "Connection refused"
+**Vanliga orsaker:**
+1. **Fel topic-namn**: Kontrollera att `rpi/commands/text` och `rpi/responses/text` används
+2. **QoS-problem**: Prova att öka QoS till 1 eller 2
+3. **n8n workflow inte aktivt**: Kontrollera att workflowet är aktiverat (grönt)
+4. **Client ID-konflikt**: Om samma Client ID används av flera klienter, använd unika ID:n
 
-**Kontrollera Mosquitto-konfigurationen:**
+### Problem: TLS/SSL-certifikatfel
+
+**På Raspberry Pi/Linux:**
 ```bash
-# Testa konfiguration
-sudo mosquitto -c /etc/mosquitto/mosquitto.conf -v
+# Installera/uppdatera CA-certifikat
+sudo apt update
+sudo apt install ca-certificates -y
+sudo update-ca-certificates
 ```
 
-**Kontrollera att Mosquitto lyssnar på rätt interface:**
+**På macOS:**
 ```bash
-sudo netstat -tulpn | grep mosquitto
+# Använd systemets certifikat
+mosquitto_pub -h your-cluster.hivemq.cloud -p 8883 \
+  --capath /etc/ssl/certs/ \
+  -u your-username -P your-password \
+  -t test -m hello
 ```
 
-Ska visa något som:
-```
-tcp        0      0 0.0.0.0:1883            0.0.0.0:*               LISTEN      1234/mosquitto
-```
+**Om problemet kvarstår:**
+- Ladda ner HiveMQ Cloud's CA-certifikat manuellt från HiveMQ Cloud Console
+- Använd `--cafile` istället för `--capath`
 
 ### Problem: Timeout vid anslutning
 
@@ -523,27 +725,86 @@ MQTT_MAX_RETRIES=10
 
 **Kontrollera nätverkslatens:**
 ```bash
-ping <mqtt-broker-ip>
+# Testa latens till HiveMQ Cloud
+ping your-cluster.hivemq.cloud
+
+# Testa om port 8883 är öppen
+nc -zv your-cluster.hivemq.cloud 8883
+```
+
+**Kontrollera brandvägg:**
+- Se till att utgående trafik på port 8883 är tillåten
+- Om du är bakom företagsbrandvägg, kontakta IT-avdelningen
+
+### Problem: Lokal Mosquitto fungerar inte
+
+**För lokal testning med Docker Compose:**
+```bash
+# Kontrollera status
+docker compose ps
+
+# Se loggar
+docker compose logs mosquitto
+
+# Testa anslutning
+docker compose exec mosquitto mosquitto_pub -t test -m hello
+```
+
+**För systemd-installation:**
+```bash
+# Kontrollera status
+sudo systemctl status mosquitto
+
+# Se loggar
+sudo journalctl -u mosquitto -f
+
+# Testa konfiguration
+sudo mosquitto -c /etc/mosquitto/mosquitto.conf -v
 ```
 
 ## 📚 Ytterligare resurser
 
-- **Mosquitto dokumentation**: https://mosquitto.org/documentation/
+### HiveMQ Cloud
+- **HiveMQ Cloud Console**: https://console.hivemq.cloud/
+- **HiveMQ Cloud Documentation**: https://docs.hivemq.com/hivemq-cloud/
+- **HiveMQ Cloud Pricing**: https://www.hivemq.com/cloud/ (Free tier tillgänglig)
+
+### MQTT & n8n
 - **n8n MQTT nodes**: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.mqtt/
 - **MQTT protokoll**: https://mqtt.org/
 - **MQTT Explorer**: https://mqtt-explorer.com/
+- **Mosquitto dokumentation**: https://mosquitto.org/documentation/ (för lokal testning)
+
+### Säkerhet
+- **MQTT Security Best Practices**: https://www.hivemq.com/mqtt-security-fundamentals/
+- **TLS/SSL Setup**: https://docs.hivemq.com/hivemq-cloud/security.html
 
 ## 🎉 Sammanfattning
 
 Efter att ha följt denna guide har du:
 
-✅ En fungerande MQTT broker (Mosquitto)  
+### Med HiveMQ Cloud (Rekommenderat):
+✅ Ett gratis HiveMQ Cloud konto med säker MQTT broker  
+✅ TLS-krypterad kommunikation  
+✅ Ingen lokal MQTT-installation att underhålla  
 ✅ n8n konfigurerat för MQTT-kommunikation  
-✅ Röstassistenten ansluten till MQTT  
+✅ Röstassistenten ansluten till HiveMQ Cloud  
 ✅ Ett testbart end-to-end system  
+
+### Med lokal Mosquitto (Testning):
+✅ Lokal MQTT broker för offline-utveckling  
+✅ n8n och Mosquitto i Docker Compose  
+✅ Snabb utvecklingsmiljö  
 
 Nu kan du börja utveckla mer avancerade röstkommandon och integrationer i n8n!
 
 ---
+
+**🚀 Nästa steg:**
+- Utforska n8n's integrationer (HTTP, webhooks, databaser, AI-tjänster)
+- Skapa mer avancerade röstkommandon
+- Integrera med smarta hem-system
+- Lägg till användarautentisering
+- Övervaka och analysera meddelanden i HiveMQ Cloud Console
 
 **Behöver du mer hjälp?** Se [README.md](README.md) för mer information om själva röstassistenten.
