@@ -15,23 +15,28 @@ Denna guide hjälper dig att sätta upp en komplett MQTT-miljö för röstassist
 
 För att röstassistenten ska fungera behöver du:
 
-1. **MQTT Broker** (Mosquitto) - fungerar som meddelandehanterare
-2. **n8n** - för att bearbeta röstkommandon och skapa svar
+1. **MQTT Broker** (Mosquitto) - fungerar som meddelandehanterare (på ai.genio-bot.com)
+2. **n8n** - för att bearbeta röstkommandon och skapa svar (på ai.genio-bot.com)
 3. **Röstassistenten** (denna applikation) - körs på Raspberry Pi
 
+**⚠️ VIKTIGT:** n8n och MQTT broker körs på **ai.genio-bot.com**, inte lokalt på din Raspberry Pi!
+
 ```
-┌─────────────────┐      MQTT Topics:           ┌──────────────┐
-│  Raspberry Pi   │  ──► rpi/commands/text ──►  │     n8n      │
-│ (Röstassistent) │                              │   (Server)   │
-│                 │  ◄── rpi/responses/text ◄──  │              │
-└─────────────────┘                              └──────────────┘
-         │                                               │
-         └───────────► MQTT Broker (Mosquitto) ◄────────┘
+┌─────────────────┐      MQTT Topics:           ┌────────────────────────┐
+│  Raspberry Pi   │  ──► rpi/commands/text ──►  │   ai.genio-bot.com     │
+│ (Röstassistent) │                              │  ┌──────────────┐      │
+│                 │  ◄── rpi/responses/text ◄──  │  │     n8n      │      │
+└─────────────────┘                              │  └──────────────┘      │
+         │                                       │         │              │
+         └──────────► MQTT Broker (Mosquitto) ◄─┴─────────┘              │
+                      (ai.genio-bot.com:1883)   └────────────────────────┘
 ```
 
-## 🐳 Metod 1: Docker Compose (Rekommenderas)
+## 🐳 Metod 1: Docker Compose (För lokal testning)
 
-Detta är det enklaste sättet att sätta upp både Mosquitto och n8n.
+**⚠️ OBS:** Detta är **ENDAST** för lokal utveckling och testning. I produktionsmiljön körs n8n och MQTT broker redan på **ai.genio-bot.com**.
+
+Om du vill testa lokalt kan du sätta upp både Mosquitto och n8n med Docker Compose:
 
 ### Steg 1: Installera Docker och Docker Compose
 
@@ -99,16 +104,61 @@ source venv/bin/activate
 python3 setup_wizard.py
 ```
 
-Använd dessa värden:
-- **MQTT broker host**: `localhost` (om på samma maskin) eller IP-adressen till din server
+**För anslutning till produktionsservern (ai.genio-bot.com):**
+- **MQTT broker host**: `ai.genio-bot.com`
+- **MQTT broker port**: `1883`
+- **MQTT användarnamn**: (lämna tom eller använd ditt användarnamn)
+- **MQTT lösenord**: (lämna tom eller använd ditt lösenord)
+- **Använd TLS**: `false` (eller `true` om konfigurerat)
+
+**För lokal testning:**
+- **MQTT broker host**: `localhost`
 - **MQTT broker port**: `1883`
 - **MQTT användarnamn**: (lämna tom)
 - **MQTT lösenord**: (lämna tom)
 - **Använd TLS**: `false`
 
-## 🔧 Metod 2: Manuell installation
+## 🔧 Metod 2: Anslut till befintlig server (ai.genio-bot.com)
 
-Om du föredrar att installera Mosquitto direkt på systemet.
+**⚠️ REKOMMENDERAT:** För normal användning, anslut direkt till **ai.genio-bot.com** där n8n och MQTT broker redan körs.
+
+Du behöver **INTE** installera Mosquitto eller n8n lokalt. Hoppa direkt till [Konfigurera röstassistenten](#konfigurera-röstassistenten-för-produktionsservern).
+
+### Konfigurera röstassistenten för produktionsservern
+
+1. **Kör setup wizard:**
+```bash
+source venv/bin/activate
+python3 setup_wizard.py
+```
+
+2. **Använd följande värden:**
+   - **MQTT broker host**: `ai.genio-bot.com` (standard)
+   - **MQTT broker port**: `1883`
+   - **MQTT användarnamn**: (lämna tom eller be din administratör om uppgifter)
+   - **MQTT lösenord**: (lämna tom eller be din administratör om uppgifter)
+   - **Använd TLS**: `false` (eller `true` beroende på serverkonfiguration)
+
+3. **Testa anslutningen:**
+```bash
+# Installera mosquitto-clients om du inte har det
+sudo apt install mosquitto-clients
+
+# Testa anslutning till servern
+mosquitto_pub -h ai.genio-bot.com -t "test/connection" -m "Hello from Raspberry Pi"
+```
+
+4. **Starta röstassistenten:**
+```bash
+source venv/bin/activate
+python3 main.py
+```
+
+**Klart!** Din röstassistent kommer nu att kommunicera med n8n på ai.genio-bot.com via MQTT.
+
+## 🔧 Metod 3: Manuell installation (För lokal testning)
+
+Om du föredrar att installera Mosquitto direkt på systemet för lokal utveckling.
 
 ### Steg 1: Installera Mosquitto
 
@@ -196,22 +246,27 @@ n8n kommer nu vara tillgängligt på: http://localhost:5678
 
 ## 🔌 Konfigurera n8n för MQTT
 
+**📍 n8n är tillgänglig på:** http://ai.genio-bot.com:5678 (kontakta administratören för inloggningsuppgifter)
+
 ### Steg 1: Skapa ett nytt workflow i n8n
 
-1. Öppna n8n i din webbläsare: http://localhost:5678
-2. Skapa ett nytt workflow
-3. Lägg till noderna enligt schemat nedan
+1. Öppna n8n i din webbläsare: http://ai.genio-bot.com:5678
+2. Logga in med dina uppgifter
+3. Skapa ett nytt workflow
+4. Lägg till noderna enligt schemat nedan
 
 ### Steg 2: Lägg till MQTT Trigger Node
 
 1. Klicka på "+" för att lägga till en ny nod
 2. Sök efter "MQTT Trigger"
 3. Konfigurera:
-   - **Broker**: `mosquitto` (om Docker Compose) eller `localhost`
+   - **Broker**: `localhost` (n8n och MQTT broker körs på samma server)
    - **Port**: `1883`
    - **Protocol**: `mqtt`
    - **Topics**: `rpi/commands/text`
    - **Client ID**: `n8n-mqtt-trigger` (valfritt)
+
+**⚠️ Observera:** Använd `localhost` i n8n eftersom n8n och Mosquitto körs på samma server (ai.genio-bot.com). Raspberry Pi:n ansluter dock till `ai.genio-bot.com`.
 
 ### Steg 3: Lägg till processlogik
 
@@ -251,7 +306,7 @@ return [{
 
 1. Lägg till en "MQTT" nod efter Code-noden
 2. Konfigurera:
-   - **Broker**: `mosquitto` (om Docker Compose) eller `localhost`
+   - **Broker**: `localhost` (n8n och MQTT broker körs på samma server)
    - **Port**: `1883`
    - **Protocol**: `mqtt`
    - **Topic**: `rpi/responses/text`
@@ -281,14 +336,23 @@ Detta skript testar:
 
 Simulera ett kommando från röstassistenten:
 
+**För anslutning till ai.genio-bot.com:**
 ```bash
-mosquitto_pub -h localhost -t "rpi/commands/text" \
+mosquitto_pub -h ai.genio-bot.com -t "rpi/commands/text" \
   -m '{"text":"hej", "timestamp":"2024-01-01T12:00:00"}'
 ```
 
 Du bör se svaret på response-topic:
 
 ```bash
+mosquitto_sub -h ai.genio-bot.com -t "rpi/responses/text" -v
+```
+
+**För lokal testning:**
+```bash
+mosquitto_pub -h localhost -t "rpi/commands/text" \
+  -m '{"text":"hej", "timestamp":"2024-01-01T12:00:00"}'
+
 mosquitto_sub -h localhost -t "rpi/responses/text" -v
 ```
 
@@ -309,7 +373,7 @@ För enklare testning och debugging, installera MQTT Explorer:
 
 **På Windows/Mac/Linux:**
 - Ladda ner från: https://mqtt-explorer.com/
-- Anslut till din broker: `localhost:1883`
+- Anslut till din broker: `ai.genio-bot.com:1883` (för produktionsservern) eller `localhost:1883` (för lokal testning)
 - Prenumerera på `rpi/#` för att se all trafik
 
 ## 🔒 Säker konfiguration (Produktion)
@@ -395,14 +459,18 @@ mosquitto_pub -h localhost -t "test" -m "hello" -d
 
 ### Problem: n8n kan inte ansluta till Mosquitto
 
-**Om du använder Docker Compose:**
+**På produktionsservern (ai.genio-bot.com):**
+- n8n och Mosquitto körs på samma server, använd `localhost` i n8n
+- Kontakta administratören om problem uppstår
+
+**Om du använrar lokal Docker Compose:**
 - Använd service-namnet `mosquitto` istället för `localhost` i n8n
 - Kontrollera att båda containers är på samma nätverk
 
 **Om olika maskiner:**
 - Kontrollera brandvägg: `sudo ufw allow 1883/tcp`
-- Använd rätt IP-adress istället för localhost
-- Testa med: `mosquitto_pub -h <IP> -t "test" -m "hello"`
+- Använd rätt IP-adress eller domännamn (ai.genio-bot.com)
+- Testa med: `mosquitto_pub -h ai.genio-bot.com -t "test" -m "hello"`
 
 ### Problem: Meddelanden går inte fram
 

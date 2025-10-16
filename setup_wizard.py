@@ -101,8 +101,9 @@ def main():
     print("\n" + "─" * 70)
     print("⚙️  MQTT Konfiguration")
     print("─" * 70)
+    print("💡 n8n körs på ai.genio-bot.com (inte lokalt)")
     
-    mqtt_host = ask("MQTT broker host", "localhost")
+    mqtt_host = ask("MQTT broker host", "ai.genio-bot.com")
     mqtt_port = ask(
         "MQTT broker port", 
         "1883",

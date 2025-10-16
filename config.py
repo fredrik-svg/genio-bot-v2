@@ -21,7 +21,8 @@ def get_env_int(key: str, default: int) -> int:
         return default
 
 # MQTT Configuration
-MQTT_HOST = os.getenv("MQTT_HOST", "localhost")
+# Default to ai.genio-bot.com as n8n is hosted there
+MQTT_HOST = os.getenv("MQTT_HOST", "ai.genio-bot.com")
 MQTT_PORT = get_env_int("MQTT_PORT", 1883)
 MQTT_USERNAME = os.getenv("MQTT_USERNAME", "")
 MQTT_PASSWORD = os.getenv("MQTT_PASSWORD", "")
