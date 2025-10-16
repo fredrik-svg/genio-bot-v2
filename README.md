@@ -3,6 +3,8 @@
 ## Översikt
 Detta projekt tillhandahåller en robust och säker röstassistentapplikation designad för Raspberry Pi 5. Den kombinerar lokal Speech-to-Text (STT) och Text-to-Speech (TTS) för svenska med realtidskommunikation till ett n8n-flöde via MQTT. Huvudsyftet är att möjliggöra en handsfree-interaktion med röstkommandon, där Raspberry Pi hanterar ljudin- och utgång samt röstigenkänning/syntes, medan n8n fungerar som den centrala "hjärnan" för att bearbeta kommandon och generera smarta svar.
 
+> 💡 **Ny användare?** Se [QUICKSTART.md](QUICKSTART.md) för snabb guide om installation med virtuell miljö och lösning på `externally-managed-environment` felet.
+
 Applikationen är byggd med fokus på:
 - 🔒 **Säkerhet**: Miljövariabler för känslig data, input-validering, resurshantering
 - ⚡ **Prestanda**: Optimerad ljudhantering och effektiv resursanvändning
@@ -37,7 +39,7 @@ Applikationen är byggd med fokus på:
 ### 1. Förbered systemet
 ```bash
 sudo apt update && sudo apt upgrade -y
-sudo apt install -y python3 python3-pip portaudio19-dev git
+sudo apt install -y python3 python3-pip python3-venv portaudio19-dev git
 ```
 
 ### 2. Klona projektet
@@ -47,13 +49,43 @@ cd genio-bot-v2
 ```
 
 ### 3. Installera Python-paket
+
+**⚠️ Viktigt:** På moderna Raspberry Pi OS-versioner (och andra Debian/Ubuntu-baserade system) kan du få felmeddelandet `error: externally-managed-environment` när du försöker använda `pip3 install`. Detta är en säkerhetsfunktion för att skydda systempaketen.
+
+**Lösning:** Använd en virtuell miljö (virtual environment), vilket är den rekommenderade metoden:
+
+#### Alternativ A: Automatisk installation (rekommenderas)
 ```bash
-pip3 install -r requirements.txt
+./install.sh
+```
+
+Detta skript kommer att:
+- Skapa en virtuell Python-miljö
+- Installera alla beroenden
+- Skapa nödvändiga mappar
+
+#### Alternativ B: Manuell installation
+```bash
+# Skapa virtuell miljö
+python3 -m venv venv
+
+# Aktivera virtuell miljö
+source venv/bin/activate
+
+# Installera beroenden
+pip install -r requirements.txt
+```
+
+**Notera:** Du måste aktivera den virtuella miljön varje gång du vill köra applikationen:
+```bash
+source venv/bin/activate
 ```
 
 ### 4. Kör setup-wizardet
 Setup-wizardet skapar en `.env`-fil med din konfiguration:
 ```bash
+# Se till att virtuell miljö är aktiverad först
+source venv/bin/activate
 python3 setup_wizard.py
 ```
 
@@ -64,6 +96,8 @@ python3 setup_wizard.py
 
 ### 5. Starta applikationen
 ```bash
+# Se till att virtuell miljö är aktiverad först
+source venv/bin/activate
 python3 main.py
 ```
 
@@ -154,6 +188,25 @@ rpi-n8n-voice-assistant/
 
 ## Felsökning
 
+### Problem: externally-managed-environment
+Om du får felmeddelandet `error: externally-managed-environment` när du försöker köra `pip3 install -r requirements.txt`:
+
+**Orsak:** Moderna Debian/Ubuntu-baserade system (inklusive Raspberry Pi OS) använder PEP 668 för att förhindra att systempaketen bryts av pip-installationer.
+
+**Lösning:**
+1. **Använd virtuell miljö (rekommenderas):**
+   ```bash
+   # Kör installationsskriptet
+   ./install.sh
+   
+   # Eller manuellt:
+   python3 -m venv venv
+   source venv/bin/activate
+   pip install -r requirements.txt
+   ```
+
+2. **Alternativ (ej rekommenderat):** Använd `pip install --break-system-packages`, men detta kan orsaka problem med systempaket.
+
 ### Problem med MQTT-anslutning
 ```bash
 # Kontrollera att MQTT broker körs
@@ -165,6 +218,9 @@ mosquitto_pub -h localhost -t test -m "hello"
 
 ### Problem med ljudenheter
 ```python
+# Aktivera virtuell miljö först
+source venv/bin/activate
+
 # Lista tillgängliga ljudenheter
 import pyaudio
 pa = pyaudio.PyAudio()
