@@ -99,20 +99,34 @@ def main():
     print("    → https://picovoice.ai/platform/porcupine/")
 
     print("\n" + "─" * 70)
-    print("⚙️  MQTT Konfiguration")
+    print("⚙️  MQTT Konfiguration (HiveMQ Cloud)")
     print("─" * 70)
-    print("💡 n8n körs på ai.genio-bot.com (inte lokalt)")
+    print("💡 Använder HiveMQ Cloud - ingen lokal MQTT-installation krävs")
+    print("📖 Skapa ett gratis konto på: https://console.hivemq.cloud/")
+    print("   Du behöver din cluster URL, användarnamn och lösenord")
     
-    mqtt_host = ask("MQTT broker host", "ai.genio-bot.com")
+    mqtt_host = ask("HiveMQ Cloud cluster URL (t.ex. abc123.hivemq.cloud)")
+    if not mqtt_host:
+        print("❌ MQTT broker host krävs!")
+        sys.exit(1)
+    
     mqtt_port = ask(
-        "MQTT broker port", 
-        "1883",
+        "MQTT broker port (8883 för TLS)", 
+        "8883",
         validator=validate_port,
         error_msg="Port måste vara mellan 1 och 65535"
     )
-    mqtt_username = ask("MQTT användarnamn", "")
-    mqtt_password = ask("MQTT lösenord", "")
-    mqtt_tls = ask("Använd TLS? (true/false)", "false").lower()
+    mqtt_username = ask("HiveMQ Cloud användarnamn")
+    if not mqtt_username:
+        print("❌ Användarnamn krävs för HiveMQ Cloud!")
+        sys.exit(1)
+    
+    mqtt_password = ask("HiveMQ Cloud lösenord")
+    if not mqtt_password:
+        print("❌ Lösenord krävs för HiveMQ Cloud!")
+        sys.exit(1)
+    
+    mqtt_tls = ask("Använd TLS? (true/false)", "true").lower()
     mqtt_tls = "True" if mqtt_tls in ("true", "yes", "1") else "False"
 
     print("\n" + "─" * 70)

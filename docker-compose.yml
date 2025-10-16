@@ -1,14 +1,14 @@
 # Docker Compose för LOKAL utveckling och testning
 # 
-# VIKTIGT: Detta är endast för lokal testning!
-# I produktionsmiljön körs n8n och MQTT broker redan på ai.genio-bot.com
+# ⚠️ VIKTIGT: Detta är endast för lokal testning!
+# För produktion används HiveMQ Cloud - ingen lokal MQTT broker behövs!
 # 
 # Använd detta för:
 # - Lokal utveckling och testning
-# - Offline-arbete
-# - Testa ändringar innan deployment till produktionsservern
+# - Offline-arbete utan HiveMQ Cloud
+# - Testa ändringar innan deployment
 #
-# För normal användning: Anslut direkt till ai.genio-bot.com (se MQTT_QUICKSTART.md)
+# För normal användning: Använd HiveMQ Cloud (se MQTT_QUICKSTART.md)
 
 services:
   # MQTT Broker (Mosquitto)

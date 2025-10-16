@@ -21,12 +21,13 @@ def get_env_int(key: str, default: int) -> int:
         return default
 
 # MQTT Configuration
-# Default to ai.genio-bot.com as n8n is hosted there
-MQTT_HOST = os.getenv("MQTT_HOST", "ai.genio-bot.com")
-MQTT_PORT = get_env_int("MQTT_PORT", 1883)
+# Using HiveMQ Cloud - no local MQTT broker needed
+# Get credentials from https://console.hivemq.cloud/
+MQTT_HOST = os.getenv("MQTT_HOST", "")  # No default - must be configured
+MQTT_PORT = get_env_int("MQTT_PORT", 8883)  # HiveMQ Cloud TLS port
 MQTT_USERNAME = os.getenv("MQTT_USERNAME", "")
 MQTT_PASSWORD = os.getenv("MQTT_PASSWORD", "")
-MQTT_TLS = get_env_bool("MQTT_TLS", False)
+MQTT_TLS = get_env_bool("MQTT_TLS", True)  # HiveMQ Cloud requires TLS
 
 MQTT_TOPIC_COMMANDS = os.getenv("MQTT_TOPIC_COMMANDS", "rpi/commands/text")
 MQTT_TOPIC_RESPONSES = os.getenv("MQTT_TOPIC_RESPONSES", "rpi/responses/text")
