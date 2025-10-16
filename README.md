@@ -5,7 +5,9 @@ Detta projekt tillhandahåller en robust och säker röstassistentapplikation de
 
 > 💡 **Ny användare?** Se [QUICKSTART.md](QUICKSTART.md) för snabb guide om installation med virtuell miljö och lösning på `externally-managed-environment` felet.
 > 
-> 📡 **Behöver du sätta upp MQTT?** Se [MQTT_SETUP.md](MQTT_SETUP.md) för komplett guide om MQTT broker och n8n integration.
+> 📡 **Behöver du sätta upp MQTT?** 
+> - **Snabbstart (5 min)**: [MQTT_QUICKSTART.md](MQTT_QUICKSTART.md) 🚀
+> - **Detaljerad guide**: [MQTT_SETUP.md](MQTT_SETUP.md) 📖
 
 Applikationen är byggd med fokus på:
 - 🔒 **Säkerhet**: Miljövariabler för känslig data, input-validering, resurshantering

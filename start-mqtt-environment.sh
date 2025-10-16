@@ -29,6 +29,18 @@ echo ""
 # Skapa nödvändiga mappar
 echo "📁 Skapar mappar för persistence..."
 mkdir -p mosquitto/data mosquitto/log n8n-data
+
+# Sätt rätt ägare för n8n-data (UID 1000 = n8n container user)
+# Detta krävs för att n8n ska kunna skriva till mappen
+if [ -d "n8n-data" ]; then
+    if [ "$(uname)" = "Linux" ]; then
+        # På Linux, försök sätta rätt ägare
+        if command -v sudo &> /dev/null; then
+            sudo chown -R 1000:1000 n8n-data 2>/dev/null || true
+        fi
+    fi
+fi
+
 echo "✓ Mappar skapade"
 echo ""
 
