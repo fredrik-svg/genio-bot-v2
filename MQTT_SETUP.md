@@ -63,6 +63,13 @@ sudo usermod -aG docker $USER
 
 Projektet innehåller en färdig `docker-compose.yml` som startar både Mosquitto och n8n.
 
+**Snabbstart (rekommenderas):**
+```bash
+# Kör det medföljande skriptet som startar allt automatiskt
+./start-mqtt-environment.sh
+```
+
+**Manuellt:**
 ```bash
 # Starta alla tjänster
 docker compose up -d
@@ -257,7 +264,20 @@ Klicka på "Active" i övre högra hörnet för att aktivera workflowet.
 
 ## 🧪 Testa MQTT-anslutningen
 
-### Test 1: Manuellt meddelande
+### Test 1: Automatisk test (rekommenderas)
+
+Använd det medföljande testskriptet:
+
+```bash
+./test-mqtt-connection.sh
+```
+
+Detta skript testar:
+- Anslutning till MQTT broker
+- Publicera och prenumerera på meddelanden
+- Röstassistent topics (rpi/commands/text)
+
+### Test 2: Manuellt meddelande
 
 Simulera ett kommando från röstassistenten:
 
@@ -272,7 +292,7 @@ Du bör se svaret på response-topic:
 mosquitto_sub -h localhost -t "rpi/responses/text" -v
 ```
 
-### Test 2: Med röstassistenten
+### Test 3: Med röstassistenten
 
 1. Starta röstassistenten:
 ```bash
@@ -283,7 +303,7 @@ python3 main.py
 2. Säg wakeword (t.ex. "assistans") följt av ett kommando
 3. Kontrollera loggarna för både röstassistenten och n8n
 
-### Test 3: MQTT Explorer (GUI-verktyg)
+### Test 4: MQTT Explorer (GUI-verktyg)
 
 För enklare testning och debugging, installera MQTT Explorer:
 
