@@ -3,11 +3,12 @@
 ## Översikt
 Detta projekt tillhandahåller en robust och säker röstassistentapplikation designad för Raspberry Pi 5. Den kombinerar lokal Speech-to-Text (STT) och Text-to-Speech (TTS) för svenska med realtidskommunikation till ett n8n-flöde via MQTT. Huvudsyftet är att möjliggöra en handsfree-interaktion med röstkommandon, där Raspberry Pi hanterar ljudin- och utgång samt röstigenkänning/syntes, medan n8n fungerar som den centrala "hjärnan" för att bearbeta kommandon och generera smarta svar.
 
-**🌐 Arkitektur:** n8n och MQTT broker körs på **ai.genio-bot.com**, inte lokalt på Raspberry Pi. Röstassistenten ansluter till den fjärrservern för alla MQTT-operationer.
+**🌐 Arkitektur:** Använder **HiveMQ Cloud** som MQTT broker - ingen lokal MQTT-installation behövs! Röstassistenten och n8n ansluter båda till HiveMQ Cloud för säker, skalbar kommunikation.
 
 > 💡 **Ny användare?** Se [QUICKSTART.md](QUICKSTART.md) för snabb guide om installation med virtuell miljö och lösning på `externally-managed-environment` felet.
 > 
 > 📡 **Behöver du sätta upp MQTT?** 
+> - **HiveMQ Cloud Guide**: [HIVEMQ_CLOUD.md](HIVEMQ_CLOUD.md) ☁️
 > - **Snabbstart (5 min)**: [MQTT_QUICKSTART.md](MQTT_QUICKSTART.md) 🚀
 > - **Detaljerad guide**: [MQTT_SETUP.md](MQTT_SETUP.md) 📖
 
@@ -121,14 +122,15 @@ python3 main.py
 
 ## MQTT & n8n Setup
 
-> 📖 **Se [MQTT_SETUP.md](MQTT_SETUP.md)** för komplett guide om hur du ansluter till MQTT broker och n8n.
+> 📖 **Se [MQTT_SETUP.md](MQTT_SETUP.md)** för komplett guide om hur du ansluter till HiveMQ Cloud och n8n.
 
-**🌐 Viktig information:** n8n och MQTT broker körs på **ai.genio-bot.com**. Du behöver **inte** installera dessa lokalt.
+**☁️ HiveMQ Cloud:** Ingen lokal MQTT-installation behövs! Skapa ett gratis konto på [HiveMQ Cloud](https://console.hivemq.cloud/).
 
 ### Snabb översikt
-1. **Anslut till ai.genio-bot.com:** Konfigurera `.env` med `MQTT_HOST=ai.genio-bot.com`
-2. **n8n workflow** (redan konfigurerat på servern):
-   - **MQTT Trigger Node**: lyssnar på `rpi/commands/text`
+1. **HiveMQ Cloud Setup:** Skapa ett gratis kluster på https://console.hivemq.cloud/
+2. **Konfigurera röstassistenten:** Kör `setup_wizard.py` och ange dina HiveMQ Cloud uppgifter
+3. **n8n workflow** (konfigurera på din n8n-instans):
+   - **MQTT Trigger Node**: lyssnar på `rpi/commands/text` (anslut till HiveMQ Cloud)
    - Bearbeta texten (Code/LLM/HTTP)
    - **MQTT Publish Node**: publicera svaret som JSON med fältet `tts_text` på `rpi/responses/text`
 
@@ -230,14 +232,13 @@ Om du får felmeddelandet `error: externally-managed-environment` när du förs�
 
 ### Problem med MQTT-anslutning
 
-Se den kompletta guiden: **[MQTT_SETUP.md](MQTT_SETUP.md)** för detaljerad information om anslutning till MQTT broker.
+Se den kompletta guiden: **[MQTT_SETUP.md](MQTT_SETUP.md)** för detaljerad information om anslutning till HiveMQ Cloud.
 
 ```bash
-# Testa anslutning till servern
-mosquitto_pub -h ai.genio-bot.com -t test -m "hello"
-
-# Om du testar lokalt
-mosquitto_pub -h localhost -t test -m "hello"
+# Testa anslutning till HiveMQ Cloud (med TLS)
+mosquitto_pub -h your-cluster.hivemq.cloud -p 8883 \
+  --capath /etc/ssl/certs/ -u your-username -P your-password \
+  -t test -m "hello"
 ```
 
 ### Problem med ljudenheter
