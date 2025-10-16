@@ -4,6 +4,10 @@
 Detta projekt tillhandahåller en robust och säker röstassistentapplikation designad för Raspberry Pi 5. Den kombinerar lokal Speech-to-Text (STT) och Text-to-Speech (TTS) för svenska med realtidskommunikation till ett n8n-flöde via MQTT. Huvudsyftet är att möjliggöra en handsfree-interaktion med röstkommandon, där Raspberry Pi hanterar ljudin- och utgång samt röstigenkänning/syntes, medan n8n fungerar som den centrala "hjärnan" för att bearbeta kommandon och generera smarta svar.
 
 > 💡 **Ny användare?** Se [QUICKSTART.md](QUICKSTART.md) för snabb guide om installation med virtuell miljö och lösning på `externally-managed-environment` felet.
+> 
+> 📡 **Behöver du sätta upp MQTT?** 
+> - **Snabbstart (5 min)**: [MQTT_QUICKSTART.md](MQTT_QUICKSTART.md) 🚀
+> - **Detaljerad guide**: [MQTT_SETUP.md](MQTT_SETUP.md) 📖
 
 Applikationen är byggd med fokus på:
 - 🔒 **Säkerhet**: Miljövariabler för känslig data, input-validering, resurshantering
@@ -113,7 +117,11 @@ python3 main.py
 - Filen är redan exkluderad i `.gitignore`
 - Använd `.env.example` som mall för nya installationer
 
-## n8n (Server)
+## MQTT & n8n Setup
+
+> 📖 **Se [MQTT_SETUP.md](MQTT_SETUP.md)** för komplett guide om hur du sätter upp MQTT broker och n8n integration.
+
+### Snabb översikt
 - **MQTT Trigger Node**: lyssnar på `rpi/commands/text`.
 - Bearbeta texten (Code/LLM/HTTP).
 - **MQTT Publish Node**: publicera svaret som JSON med fältet `tts_text` på `rpi/responses/text`.
@@ -215,6 +223,9 @@ Om du får felmeddelandet `error: externally-managed-environment` när du förs�
 2. **Alternativ (ej rekommenderat):** Använd `pip install --break-system-packages`, men detta kan orsaka problem med systempaket.
 
 ### Problem med MQTT-anslutning
+
+Se den kompletta guiden: **[MQTT_SETUP.md](MQTT_SETUP.md)** för detaljerad information om att sätta upp MQTT broker.
+
 ```bash
 # Kontrollera att MQTT broker körs
 mosquitto -v

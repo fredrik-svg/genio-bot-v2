@@ -50,3 +50,10 @@ Thumbs.db
 # Logs
 *.log
 logs/
+
+# MQTT Broker data (genereras av Mosquitto)
+mosquitto/data/
+mosquitto/log/
+
+# n8n data
+n8n-data/
