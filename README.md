@@ -3,6 +3,8 @@
 ## Översikt
 Detta projekt tillhandahåller en robust och säker röstassistentapplikation designad för Raspberry Pi 5. Den kombinerar lokal Speech-to-Text (STT) och Text-to-Speech (TTS) för svenska med realtidskommunikation till ett n8n-flöde via MQTT. Huvudsyftet är att möjliggöra en handsfree-interaktion med röstkommandon, där Raspberry Pi hanterar ljudin- och utgång samt röstigenkänning/syntes, medan n8n fungerar som den centrala "hjärnan" för att bearbeta kommandon och generera smarta svar.
 
+**🌐 Arkitektur:** n8n och MQTT broker körs på **ai.genio-bot.com**, inte lokalt på Raspberry Pi. Röstassistenten ansluter till den fjärrservern för alla MQTT-operationer.
+
 > 💡 **Ny användare?** Se [QUICKSTART.md](QUICKSTART.md) för snabb guide om installation med virtuell miljö och lösning på `externally-managed-environment` felet.
 > 
 > 📡 **Behöver du sätta upp MQTT?** 
@@ -119,12 +121,16 @@ python3 main.py
 
 ## MQTT & n8n Setup
 
-> 📖 **Se [MQTT_SETUP.md](MQTT_SETUP.md)** för komplett guide om hur du sätter upp MQTT broker och n8n integration.
+> 📖 **Se [MQTT_SETUP.md](MQTT_SETUP.md)** för komplett guide om hur du ansluter till MQTT broker och n8n.
+
+**🌐 Viktig information:** n8n och MQTT broker körs på **ai.genio-bot.com**. Du behöver **inte** installera dessa lokalt.
 
 ### Snabb översikt
-- **MQTT Trigger Node**: lyssnar på `rpi/commands/text`.
-- Bearbeta texten (Code/LLM/HTTP).
-- **MQTT Publish Node**: publicera svaret som JSON med fältet `tts_text` på `rpi/responses/text`.
+1. **Anslut till ai.genio-bot.com:** Konfigurera `.env` med `MQTT_HOST=ai.genio-bot.com`
+2. **n8n workflow** (redan konfigurerat på servern):
+   - **MQTT Trigger Node**: lyssnar på `rpi/commands/text`
+   - Bearbeta texten (Code/LLM/HTTP)
+   - **MQTT Publish Node**: publicera svaret som JSON med fältet `tts_text` på `rpi/responses/text`
 
 ### Exempel på Code-nod i n8n (JS)
 ```js
@@ -224,13 +230,13 @@ Om du får felmeddelandet `error: externally-managed-environment` när du förs�
 
 ### Problem med MQTT-anslutning
 
-Se den kompletta guiden: **[MQTT_SETUP.md](MQTT_SETUP.md)** för detaljerad information om att sätta upp MQTT broker.
+Se den kompletta guiden: **[MQTT_SETUP.md](MQTT_SETUP.md)** för detaljerad information om anslutning till MQTT broker.
 
 ```bash
-# Kontrollera att MQTT broker körs
-mosquitto -v
+# Testa anslutning till servern
+mosquitto_pub -h ai.genio-bot.com -t test -m "hello"
 
-# Testa anslutning
+# Om du testar lokalt
 mosquitto_pub -h localhost -t test -m "hello"
 ```
 

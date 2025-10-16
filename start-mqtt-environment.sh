@@ -1,12 +1,24 @@
 #!/bin/bash
 # Quick start script för MQTT miljö (Mosquitto + n8n)
+# Detta är för LOKAL utveckling och testning
 
 set -e
 
 echo "=================================================="
-echo "  MQTT Environment Quick Start"
+echo "  MQTT Environment Quick Start (LOKAL TESTNING)"
 echo "  Startar Mosquitto + n8n med Docker Compose"
 echo "=================================================="
+echo ""
+echo "⚠️  VIKTIGT: Detta är för LOKAL utveckling!"
+echo "    I produktionsmiljön körs allt på ai.genio-bot.com"
+echo "    Anslut direkt dit för normal användning."
+echo ""
+read -p "Vill du fortsätta med lokal installation? (y/N): " -n 1 -r
+echo ""
+if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    echo "Avbrutet. Se MQTT_QUICKSTART.md för anslutning till ai.genio-bot.com"
+    exit 0
+fi
 echo ""
 
 # Kontrollera att Docker är installerat
@@ -59,8 +71,10 @@ docker compose ps
 
 echo ""
 echo "=================================================="
-echo "✅ MQTT miljö är startad!"
+echo "✅ Lokal MQTT miljö är startad!"
 echo "=================================================="
+echo ""
+echo "⚠️  Du kör nu en LOKAL testmiljö"
 echo ""
 echo "Tjänster:"
 echo "  • Mosquitto MQTT Broker:"
@@ -71,10 +85,11 @@ echo "    - URL: http://localhost:5678"
 echo "    - Användarnamn: admin"
 echo "    - Lösenord: admin"
 echo ""
-echo "📋 Nästa steg:"
+echo "📋 Nästa steg för lokal testning:"
 echo "  1. Öppna n8n i din webbläsare: http://localhost:5678"
 echo "  2. Konfigurera MQTT nodes enligt guiden i MQTT_SETUP.md"
-echo "  3. Kör setup wizard för röstassistenten: python3 setup_wizard.py"
+echo "  3. Kör setup wizard: python3 setup_wizard.py"
+echo "     VIKTIGT: Använd 'localhost' som MQTT host (inte ai.genio-bot.com)"
 echo "  4. Starta röstassistenten: python3 main.py"
 echo ""
 echo "💡 Tips:"
@@ -83,4 +98,6 @@ echo "  • Stoppa tjänster: docker compose down"
 echo "  • Testa MQTT: mosquitto_pub -h localhost -t test -m hello"
 echo ""
 echo "📖 Mer information: se MQTT_SETUP.md"
+echo ""
+echo "⚠️  För produktionsanvändning: Anslut till ai.genio-bot.com istället!"
 echo "=================================================="

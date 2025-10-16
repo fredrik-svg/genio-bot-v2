@@ -3,7 +3,7 @@
 
 set -e
 
-MQTT_HOST="${1:-localhost}"
+MQTT_HOST="${1:-ai.genio-bot.com}"
 MQTT_PORT="${2:-1883}"
 
 echo "=================================================="
@@ -11,6 +11,13 @@ echo "  MQTT Connection Test"
 echo "=================================================="
 echo ""
 echo "Testar anslutning till: $MQTT_HOST:$MQTT_PORT"
+echo ""
+if [ "$MQTT_HOST" = "ai.genio-bot.com" ]; then
+    echo "💡 Testar mot produktionsservern (ai.genio-bot.com)"
+    echo "   För lokal test: ./test-mqtt-connection.sh localhost"
+else
+    echo "💡 Testar mot: $MQTT_HOST"
+fi
 echo ""
 
 # Kontrollera om mosquitto-clients är installerat
@@ -82,8 +89,16 @@ echo "=================================================="
 echo ""
 echo "MQTT broker på $MQTT_HOST:$MQTT_PORT fungerar korrekt."
 echo ""
-echo "💡 Nästa steg:"
-echo "  1. Konfigurera n8n för att lyssna på rpi/commands/text"
-echo "  2. Testa med: mosquitto_sub -h $MQTT_HOST -t 'rpi/#' -v"
-echo "  3. Kör röstassistenten: python3 main.py"
+if [ "$MQTT_HOST" = "ai.genio-bot.com" ]; then
+    echo "💡 Nästa steg:"
+    echo "  1. n8n körs redan på http://ai.genio-bot.com:5678"
+    echo "  2. Testa med: mosquitto_sub -h ai.genio-bot.com -t 'rpi/#' -v"
+    echo "  3. Konfigurera .env med MQTT_HOST=ai.genio-bot.com"
+    echo "  4. Kör röstassistenten: python3 main.py"
+else
+    echo "💡 Nästa steg:"
+    echo "  1. Konfigurera n8n för att lyssna på rpi/commands/text"
+    echo "  2. Testa med: mosquitto_sub -h $MQTT_HOST -t 'rpi/#' -v"
+    echo "  3. Kör röstassistenten: python3 main.py"
+fi
 echo ""

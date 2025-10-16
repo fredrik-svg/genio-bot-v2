@@ -1,69 +1,55 @@
 # MQTT Quick Start - Kom igång snabbt!
 
-Detta är den snabbaste vägen till en fungerande MQTT-miljö för röstassistenten.
+Detta är den snabbaste vägen till att ansluta röstassistenten till MQTT-miljön.
 
-## 🚀 Snabbstart (5 minuter)
+**🌐 VIKTIGT:** n8n och MQTT broker körs redan på **ai.genio-bot.com**. Du behöver **inte** installera något lokalt!
 
-### Steg 1: Installera Docker
+## 🚀 Snabbstart (2 minuter) - Anslut till ai.genio-bot.com
 
-**På Raspberry Pi eller Linux:**
-```bash
-curl -fsSL https://get.docker.com -o get-docker.sh
-sudo sh get-docker.sh
-sudo usermod -aG docker $USER
-```
-
-Logga ut och in igen för att aktivera docker-gruppen.
-
-### Steg 2: Starta MQTT-miljön
+### Steg 1: Konfigurera röstassistenten
 
 ```bash
 cd genio-bot-v2
-./start-mqtt-environment.sh
+source venv/bin/activate
+python3 setup_wizard.py
+```
+
+Använd följande värden:
+- **MQTT broker host**: `ai.genio-bot.com` (standard)
+- **MQTT broker port**: `1883`
+- Övriga värden: följ guiden
+
+### Steg 2: Testa anslutning
+
+```bash
+# Installera mosquitto-clients om du inte har det
+sudo apt install mosquitto-clients
+
+# Testa anslutning
+mosquitto_pub -h ai.genio-bot.com -t test -m "hello"
 ```
 
 Det är allt! 🎉
 
-Nu har du:
-- ✅ **Mosquitto MQTT broker** på `localhost:1883`
-- ✅ **n8n workflow automation** på `http://localhost:5678`
+Du är nu ansluten till:
+- ✅ **Mosquitto MQTT broker** på `ai.genio-bot.com:1883`
+- ✅ **n8n workflow automation** på `http://ai.genio-bot.com:5678`
 
 ## 📋 Nästa steg
 
 ### 1. Testa MQTT-anslutningen
 
 ```bash
-./test-mqtt-connection.sh
+./test-mqtt-connection.sh ai.genio-bot.com
 ```
 
-### 2. Konfigurera n8n
+### 2. Kontrollera n8n (valfritt)
 
-1. Öppna n8n i webbläsaren: http://localhost:5678
-2. Logga in med:
-   - Användarnamn: `admin`
-   - Lösenord: `admin`
-3. Skapa ett nytt workflow med:
-   - **MQTT Trigger** nod (topic: `rpi/commands/text`)
-   - **Code** nod (för att bearbeta kommandon)
-   - **MQTT** nod (topic: `rpi/responses/text`)
+n8n körs redan på servern och är tillgänglig på: http://ai.genio-bot.com:5678
 
-Se [MQTT_SETUP.md](MQTT_SETUP.md) för detaljerad guide.
+Kontakta administratören för inloggningsuppgifter om du behöver ändra workflow.
 
-### 3. Konfigurera röstassistenten
-
-```bash
-source venv/bin/activate
-python3 setup_wizard.py
-```
-
-Använd följande MQTT-inställningar:
-- Host: `localhost`
-- Port: `1883`
-- Användarnamn: (lämna tom)
-- Lösenord: (lämna tom)
-- TLS: `false`
-
-### 4. Starta röstassistenten
+### 3. Starta röstassistenten
 
 ```bash
 source venv/bin/activate
@@ -73,49 +59,42 @@ python3 main.py
 ## 💡 Vanliga kommandon
 
 ```bash
-# Se loggar
-docker compose logs -f
+# Testa MQTT-anslutning till servern
+mosquitto_pub -h ai.genio-bot.com -t test -m hello
 
-# Stoppa tjänster
-docker compose down
+# Lyssna på meddelanden från servern
+mosquitto_sub -h ai.genio-bot.com -t "rpi/#" -v
 
-# Starta om
-docker compose restart
-
-# Testa MQTT manuellt
-docker compose exec mosquitto mosquitto_pub -h localhost -t test -m hello
+# Testa röstassistent topics
+mosquitto_pub -h ai.genio-bot.com -t "rpi/commands/text" \
+  -m '{"text":"hej", "timestamp":"2024-01-01T12:00:00"}'
 ```
 
 ## 🔍 Felsökning
 
-### Tjänsterna startar inte
-
-```bash
-# Kontrollera status
-docker compose ps
-
-# Se felmeddelanden
-docker compose logs
-```
-
 ### MQTT-anslutning fungerar inte
 
 ```bash
-# Testa anslutning
-./test-mqtt-connection.sh
+# Testa anslutning till servern
+./test-mqtt-connection.sh ai.genio-bot.com
 
-# Kontrollera att Mosquitto körs
-docker compose exec mosquitto mosquitto_pub -h localhost -t test -m hello
+# Eller manuellt
+mosquitto_pub -h ai.genio-bot.com -t test -m hello
 ```
 
-### n8n är långsam eller svarar inte
+### Kan inte nå servern
 
 ```bash
-# Starta om n8n
-docker compose restart n8n
+# Kontrollera nätverksanslutning
+ping ai.genio-bot.com
 
-# Vänta 30 sekunder och försök igen
+# Kontrollera om port 1883 är öppen
+nc -zv ai.genio-bot.com 1883
 ```
+
+### n8n svarar inte
+
+Kontakta administratören för servern ai.genio-bot.com om n8n inte fungerar.
 
 ## 📚 Mer information
 
@@ -125,26 +104,55 @@ docker compose restart n8n
 
 ## ❓ Vanliga frågor
 
-### Kan jag använda en annan MQTT broker?
+### Var körs n8n och MQTT?
 
-Ja! Du kan installera Mosquitto direkt på systemet eller använda en befintlig broker. Se [MQTT_SETUP.md](MQTT_SETUP.md) för instruktioner.
+Båda körs på **ai.genio-bot.com**. Du behöver inte installera något lokalt.
+
+### Kan jag testa lokalt?
+
+Ja! Se [MQTT_SETUP.md](MQTT_SETUP.md) för instruktioner om lokal Docker Compose-installation för utveckling.
 
 ### Måste jag använda n8n?
 
-Ja, n8n är nödvändigt för att bearbeta röstkommandon och generera svar. Men du kan ersätta det med din egen backend om du vill.
+Ja, n8n är nödvändigt för att bearbeta röstkommandon och generera svar. n8n körs redan på ai.genio-bot.com.
 
-### Är det säkert att köra utan lösenord?
+### Hur får jag tillgång till n8n?
 
-För utveckling: Ja  
-För produktion: **Nej!**
+n8n är tillgänglig på http://ai.genio-bot.com:5678. Kontakta administratören för inloggningsuppgifter.
 
-Se avsnittet "Säker konfiguration" i [MQTT_SETUP.md](MQTT_SETUP.md) för att aktivera autentisering.
+### Behöver jag lösenord för MQTT?
 
-### Kan jag nå MQTT från en annan dator?
+Det beror på serverkonfigurationen. Om du får fel vid anslutning, kontakta administratören för användarnamn och lösenord.
 
-Ja, men du måste:
-1. Ersätta `localhost` med serverns IP-adress
-2. Öppna port 1883 i brandväggen: `sudo ufw allow 1883/tcp`
+---
+
+## 🔧 Lokal utveckling (valfritt)
+
+Om du vill testa lokalt istället för att använda ai.genio-bot.com:
+
+### Steg 1: Installera Docker
+
+```bash
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+sudo usermod -aG docker $USER
+```
+
+Logga ut och in igen.
+
+### Steg 2: Starta lokal MQTT-miljö
+
+```bash
+./start-mqtt-environment.sh
+```
+
+Nu har du en lokal miljö på:
+- MQTT broker: `localhost:1883`
+- n8n: `http://localhost:5678`
+
+### Steg 3: Konfigurera för lokal användning
+
+Kör `python3 setup_wizard.py` och använd `localhost` istället för `ai.genio-bot.com`.
 
 ---
 
