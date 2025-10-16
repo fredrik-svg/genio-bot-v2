@@ -65,6 +65,40 @@ python3 setup_wizard.py
 python3 main.py
 ```
 
+## Verifying Your Installation
+
+After activating the virtual environment, verify everything is working:
+
+```bash
+# Activate virtual environment
+source venv/bin/activate
+
+# Check Python version
+python3 --version
+
+# Check pip location (should be inside venv)
+which pip
+
+# List installed packages
+pip list
+```
+
+If `which pip` shows a path like `/path/to/genio-bot-v2/venv/bin/pip`, you're using the virtual environment correctly!
+
+### Quick Test
+
+Run the test script to verify everything is set up correctly:
+
+```bash
+./test_installation.sh
+```
+
+This will check that:
+- Virtual environment exists
+- Python is available
+- pip is using the virtual environment
+- All required packages are installed
+
 ## Deactivating the Virtual Environment
 
 When you're done:

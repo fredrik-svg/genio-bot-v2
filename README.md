@@ -79,6 +79,13 @@ pip install -r requirements.txt
 **Notera:** Du måste aktivera den virtuella miljön varje gång du vill köra applikationen:
 ```bash
 source venv/bin/activate
+# Din prompt kommer att ändras till att visa (venv) framför den
+# Exempel: (venv) user@raspberrypi:~/genio-bot-v2$
+```
+
+För att avaktivera den virtuella miljön när du är klar:
+```bash
+deactivate
 ```
 
 ### 4. Kör setup-wizardet
