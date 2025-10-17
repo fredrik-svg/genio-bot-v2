@@ -7,6 +7,7 @@ lokal STT/TTS och MQTT-kommunikation till n8n.
 import os
 import sys
 import json
+import glob
 import time
 import signal
 import logging
@@ -102,11 +103,31 @@ class VoiceAssistant:
 
         # TTS (Piper)
         try:
-            if not os.path.isdir(config.PIPER_MODEL_PATH):
-                raise FileNotFoundError(f"Piper-modellen hittas inte: {config.PIPER_MODEL_PATH}")
+            # Support both directory and file paths for PIPER_MODEL_PATH
+            piper_model_file = None
+            
+            if os.path.isfile(config.PIPER_MODEL_PATH):
+                # Direct path to .onnx file
+                piper_model_file = config.PIPER_MODEL_PATH
+            elif os.path.isdir(config.PIPER_MODEL_PATH):
+                # Directory path - find the .onnx file
+                onnx_files = sorted(glob.glob(os.path.join(config.PIPER_MODEL_PATH, "*.onnx")))
+                if onnx_files:
+                    piper_model_file = onnx_files[0]
+                    logging.info(f"Hittade Piper-modell: {os.path.basename(piper_model_file)}")
+                else:
+                    raise FileNotFoundError(
+                        f"Ingen .onnx-fil hittades i katalogen: {config.PIPER_MODEL_PATH}\n"
+                        f"Ladda ner en Piper-modell från https://github.com/rhasspy/piper#voices"
+                    )
+            else:
+                raise FileNotFoundError(
+                    f"Piper-modellen hittas inte: {config.PIPER_MODEL_PATH}\n"
+                    f"Ange antingen en sökväg till en .onnx-fil eller en katalog som innehåller en."
+                )
                 
             logging.info("Laddar Piper-modell (kan ta några sekunder)...")
-            self.piper = PiperVoice.load(config.PIPER_MODEL_PATH)
+            self.piper = PiperVoice.load(piper_model_file)
             logging.info("✓ Text-to-Speech (Piper) initialiserad")
         except Exception as e:
             raise RuntimeError(f"Kunde inte initialisera Piper: {e}")
