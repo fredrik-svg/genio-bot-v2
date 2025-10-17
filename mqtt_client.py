@@ -79,6 +79,87 @@ class MqttClient:
         else:
             logging.info("MQTT frånkopplad")
 
+    def _fix_unescaped_quotes_in_json(self, json_str: str) -> str:
+        """
+        Försök att fixa ej-escapade citattecken i JSON-strängar.
+        
+        Hanterar fall som:
+        {"tts_text": "Hej! Hur kan jag hjälpa dig med "kan mat"?"}
+        
+        Och konverterar det till:
+        {"tts_text": "Hej! Hur kan jag hjälpa dig med \"kan mat\"?"}
+        
+        Args:
+            json_str: JSON-sträng med potentiellt ej-escapade citattecken
+            
+        Returns:
+            Fixad JSON-sträng
+        """
+        result = []
+        i = 0
+        in_string = False
+        in_value = False
+        escape_next = False
+        
+        while i < len(json_str):
+            char = json_str[i]
+            
+            # Hantera escape-sekvenser
+            if escape_next:
+                result.append(char)
+                escape_next = False
+                i += 1
+                continue
+                
+            if char == '\\':
+                result.append(char)
+                escape_next = True
+                i += 1
+                continue
+            
+            # Hantera citattecken
+            if char == '"':
+                if not in_string:
+                    # Startar en sträng
+                    in_string = True
+                    result.append(char)
+                    # Kontrollera om detta är ett värde (efter :) eller en nyckel
+                    j = len(result) - 2
+                    while j >= 0 and result[j] in ' \t\n\r':
+                        j -= 1
+                    if j >= 0 and result[j] == ':':
+                        in_value = True
+                    else:
+                        in_value = False
+                else:
+                    # Vi är i en sträng och hittade ett citattecken
+                    # Kontrollera om detta är det avslutande citattecknet eller ett internt
+                    next_chars = json_str[i+1:i+10].lstrip()
+                    
+                    # Om nästa signifikanta tecken är : då var detta en nyckel
+                    # Om nästa signifikanta tecken är , } eller ] då är detta ett avslutande citattecken
+                    # Annars är det ett internt citattecken som ska escapas
+                    
+                    if next_chars and next_chars[0] in ':,}]':
+                        # Detta är ett strukturellt citattecken (avslutande)
+                        in_string = False
+                        in_value = False
+                        result.append(char)
+                    elif in_value:
+                        # Detta är ett internt citattecken i ett värde - escapa det
+                        result.append('\\')
+                        result.append(char)
+                    else:
+                        # Detta avslutar en nyckel
+                        in_string = False
+                        result.append(char)
+            else:
+                result.append(char)
+            
+            i += 1
+        
+        return ''.join(result)
+
     def _on_message(self, client: mqtt.Client, userdata: Any, msg: mqtt.MQTTMessage) -> None:
         """
         Callback för inkommande meddelanden.
@@ -92,13 +173,25 @@ class MqttClient:
                 return
                 
             payload = msg.payload.decode("utf-8")
-            data = json.loads(payload)
+            
+            # Försök först att parsa JSON normalt
+            try:
+                data = json.loads(payload)
+            except json.JSONDecodeError as e:
+                # Om parsing misslyckas, försök fixa vanliga problem (t.ex. ej-escapade citattecken)
+                logging.warning(f"JSON parsing misslyckades, försöker fixa: {e}")
+                try:
+                    fixed_payload = self._fix_unescaped_quotes_in_json(payload)
+                    data = json.loads(fixed_payload)
+                    logging.info("JSON-meddelande fixat och parsat framgångsrikt")
+                except json.JSONDecodeError as e2:
+                    logging.error(f"Ogiltig JSON i MQTT-meddelande: {e2}")
+                    logging.debug(f"Payload som misslyckades: {payload[:200]}...")
+                    return
             
             # Anropa callback
             if self.on_message_cb:
                 self.on_message_cb(msg.topic, data)
-        except json.JSONDecodeError as e:
-            logging.error(f"Ogiltig JSON i MQTT-meddelande: {e}")
         except UnicodeDecodeError as e:
             logging.error(f"Kunde inte dekoda MQTT payload: {e}")
         except Exception as e:
