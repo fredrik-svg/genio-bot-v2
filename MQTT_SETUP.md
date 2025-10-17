@@ -69,6 +69,24 @@ För att röstassistenten ska fungera behöver du:
    - **Port**: `8883` (TLS/SSL)
    - **WebSocket Port**: `8884` (om du behöver WebSocket)
 
+**⚠️ VIKTIGT - Vilken URL ska du använda?**
+
+HiveMQ Cloud visar tre olika URLs på dashboard:
+1. **URL**: `abc123.hivemq.cloud` ✅ **ANVÄND DENNA FÖR RÖSTASSISTENTEN!**
+2. **TLS MQTT URL**: `mqtts://abc123.hivemq.cloud:8883` ❌ Använd INTE (innehåller protokoll och port)
+3. **TLS Websocket URL**: `wss://abc123.hivemq.cloud:8884/mqtt` ❌ Använd INTE (för websockets)
+
+**För denna röstassistent måste du använda den enkla cluster URL:en UTAN protokollprefix (`mqtt://`, `mqtts://`, `wss://`) och UTAN port (`:8883`).**
+
+Rätt exempel:
+- ✅ `abc123.hivemq.cloud`
+- ✅ `my-voice-cluster.hivemq.cloud`
+
+Fel exempel:
+- ❌ `mqtts://abc123.hivemq.cloud:8883`
+- ❌ `abc123.hivemq.cloud:8883`
+- ❌ `wss://abc123.hivemq.cloud:8884/mqtt`
+
 ### Steg 2: Skapa användare för MQTT-åtkomst
 
 1. **Navigera till "Access Management"** i din kluster-dashboard
@@ -94,6 +112,9 @@ python3 setup_wizard.py
 
 **Ange följande värden:**
 - **HiveMQ Cloud cluster URL**: Din kluster-URL (t.ex. `abc123.hivemq.cloud`)
+  - ⚠️ **OBS**: Använd ENDAST hostname, INTE "TLS MQTT URL" eller "TLS Websocket URL"
+  - ✅ Rätt: `abc123.hivemq.cloud`
+  - ❌ Fel: `mqtts://abc123.hivemq.cloud:8883`
 - **MQTT broker port**: `8883`
 - **HiveMQ Cloud användarnamn**: Det användarnamn du skapade
 - **HiveMQ Cloud lösenord**: Det lösenord du skapade
@@ -337,6 +358,10 @@ Innan du konfigurerar noder behöver du skapa credentials för HiveMQ Cloud:
    - **Name**: `HiveMQ Cloud`
    - **Protocol**: `mqtt`
    - **Host**: Din HiveMQ Cloud URL (t.ex. `abc123.hivemq.cloud`)
+     - ⚠️ **VIKTIGT**: Använd bara hostname UTAN protokollprefix
+     - ✅ Rätt: `abc123.hivemq.cloud`
+     - ❌ Fel: `mqtts://abc123.hivemq.cloud`
+     - ❌ Fel: `mqtt://abc123.hivemq.cloud`
    - **Port**: `8883`
    - **Username**: Ditt HiveMQ Cloud användarnamn
    - **Password**: Ditt HiveMQ Cloud lösenord
@@ -590,10 +615,14 @@ mosquitto_pub -h your-cluster.hivemq.cloud -p 8883 \
 ```
 
 **Vanliga fel:**
-1. **Fel användarnamn/lösenord**: Verifiera i HiveMQ Cloud Console → Access Management
-2. **Fel cluster URL**: Kontrollera URL i HiveMQ Cloud Console → Overview
-3. **TLS-certifikatfel**: Se till att `ca-certificates` är installerat (`sudo apt install ca-certificates`)
-4. **Port blockerad**: Kontrollera att port 8883 är öppen i din brandvägg
+1. **Fel URL-format**: Kontrollera att du INTE använder protokollprefix
+   - ✅ Rätt: `abc123.hivemq.cloud`
+   - ❌ Fel: `mqtts://abc123.hivemq.cloud:8883`
+   - ❌ Fel: `wss://abc123.hivemq.cloud:8884/mqtt`
+2. **Fel användarnamn/lösenord**: Verifiera i HiveMQ Cloud Console → Access Management
+3. **Fel cluster URL**: Kontrollera URL i HiveMQ Cloud Console → Overview (använd fältet märkt "URL")
+4. **TLS-certifikatfel**: Se till att `ca-certificates` är installerat (`sudo apt install ca-certificates`)
+5. **Port blockerad**: Kontrollera att port 8883 är öppen i din brandvägg
 
 **Kontrollera nätverksanslutning:**
 ```bash
@@ -616,7 +645,9 @@ openssl s_client -connect your-cluster.hivemq.cloud:8883
 2. Hitta din HiveMQ Cloud credential
 3. Klicka på "Test" för att verifiera anslutningen
 4. Om testet misslyckas, kontrollera:
-   - Host ska vara UTAN `mqtt://` eller `mqtts://` prefix
+   - Host ska vara UTAN protokollprefix (`mqtt://`, `mqtts://`, `wss://`)
+     - ✅ Rätt: `abc123.hivemq.cloud`
+     - ❌ Fel: `mqtts://abc123.hivemq.cloud`
    - Port ska vara `8883`
    - SSL/TLS ska vara aktiverad
    - Username och Password ska matcha HiveMQ Cloud

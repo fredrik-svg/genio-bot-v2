@@ -17,6 +17,15 @@ Detta är den snabbaste vägen till att ansluta röstassistenten till MQTT-milj�
    - **Användarnamn** (skapa under "Access Management")
    - **Lösenord**
 
+**⚠️ VIKTIGT - Vilken URL ska du använda?**
+
+HiveMQ Cloud visar tre olika URLs:
+1. **URL**: `abc123.hivemq.cloud` ✅ **ANVÄND DENNA!**
+2. **TLS MQTT URL**: `mqtts://abc123.hivemq.cloud:8883` ❌ Använd INTE
+3. **TLS Websocket URL**: `wss://abc123.hivemq.cloud:8884/mqtt` ❌ Använd INTE
+
+**Använd bara den enkla cluster URL:en UTAN protokollprefix eller port.**
+
 ### Steg 2: Konfigurera röstassistenten
 
 ```bash

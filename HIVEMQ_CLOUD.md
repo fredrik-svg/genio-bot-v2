@@ -78,6 +78,21 @@ När klustret är skapat, anteckna:
 - **Port (MQTT/TLS)**: `8883`
 - **Port (Websockets/TLS)**: `8884`
 
+**⚠️ VIKTIGT - Vilken URL ska du använda?**
+
+HiveMQ Cloud visar tre olika URLs på dashboard:
+1. **URL**: `a1b2c3d4.hivemq.cloud` ✅ **ANVÄND DENNA!**
+2. **TLS MQTT URL**: `mqtts://a1b2c3d4.hivemq.cloud:8883` ❌ Använd INTE
+3. **TLS Websocket URL**: `wss://a1b2c3d4.hivemq.cloud:8884/mqtt` ❌ Använd INTE
+
+**För denna röstassistent, använd bara den enkla cluster URL:en (URL-fältet) UTAN protokollprefix.**
+
+Exempel på rätt format:
+- ✅ `a1b2c3d4.hivemq.cloud`
+- ✅ `my-cluster.hivemq.cloud`
+- ❌ `mqtts://a1b2c3d4.hivemq.cloud:8883`
+- ❌ `wss://a1b2c3d4.hivemq.cloud:8884/mqtt`
+
 ### 4. Skapa Användare
 
 1. I kluster-dashboard, klicka på **"Access Management"**
