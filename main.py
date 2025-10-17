@@ -18,6 +18,7 @@ import numpy as np
 from vosk import Model, KaldiRecognizer
 import pvporcupine
 from piper import PiperVoice
+from piper.config import SynthesisConfig
 import pyaudio
 
 import config
@@ -193,14 +194,22 @@ class VoiceAssistant:
                 logging.info(f"TTS-svar mottaget ({len(tts_text)} tecken). Läser upp...")
                 
                 try:
-                    pcm = self.piper.synthesize(
-                        tts_text,
-                        rate=1.0,
-                        volume=1.0,
+                    # Create synthesis configuration
+                    syn_config = SynthesisConfig(
+                        speaker_id=config.PIPER_SPEAKER,
                         length_scale=1.0,
-                        speaker=config.PIPER_SPEAKER
+                        volume=1.0
                     )
-                    self.audio.play_pcm(np.frombuffer(pcm, dtype=np.int16))
+                    
+                    # Synthesize returns an iterable of AudioChunk objects
+                    # Collect all audio chunks and concatenate them
+                    audio_bytes = b''
+                    for audio_chunk in self.piper.synthesize(tts_text, syn_config):
+                        audio_bytes += audio_chunk.audio_int16_bytes
+                    
+                    # Convert bytes to numpy array and play
+                    pcm = np.frombuffer(audio_bytes, dtype=np.int16)
+                    self.audio.play_pcm(pcm)
                 except Exception as e:
                     logging.error(f"TTS-syntes misslyckades: {e}")
         except Exception as e:
