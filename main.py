@@ -69,7 +69,8 @@ class VoiceAssistant:
             self.audio = AudioIO(
                 sample_rate=config.SAMPLE_RATE,
                 input_device_index=config.INPUT_DEVICE_INDEX,
-                output_device_index=config.OUTPUT_DEVICE_INDEX
+                output_device_index=config.OUTPUT_DEVICE_INDEX,
+                stream_stabilize_delay=config.AUDIO_STREAM_STABILIZE_DELAY
             )
             logging.info("✓ Ljudhantering initialiserad")
         except Exception as e:
@@ -271,6 +272,10 @@ class VoiceAssistant:
         try:
             # Ljudsignal: start
             self.audio.play_wav("audio_feedback/start_listen.wav")
+            
+            # Vänta lite för att låta feedback-ljudet spelas klart och systemet stabiliseras
+            # Detta förhindrar att feedback-ljudet stör inspelningen
+            time.sleep(config.AUDIO_FEEDBACK_DELAY)
 
             # Spela in tal
             logging.info("Spelar in...")
@@ -279,6 +284,7 @@ class VoiceAssistant:
             # STT med Vosk
             logging.info("Transkriberar...")
             rec = KaldiRecognizer(self.vosk_model, config.SAMPLE_RATE)
+            rec.SetWords(True)  # Aktivera ordnivå-detaljer för bättre precision
             rec.AcceptWaveform(audio.tobytes())
             stt_json = json.loads(rec.Result())
             text = stt_json.get("text", "").strip()
