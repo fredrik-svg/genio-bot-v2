@@ -150,7 +150,6 @@ class VoiceAssistant:
             ):
                 raise ConnectionError("Kunde inte ansluta till MQTT-broker")
                 
-            self.mqtt.loop_start()
             self.mqtt.subscribe(config.MQTT_TOPIC_RESPONSES)
             logging.info("✓ MQTT-kommunikation initialiserad")
         except Exception as e:

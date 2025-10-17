@@ -50,6 +50,7 @@ class MqttClient:
         self.on_message_cb = on_message
         self.max_payload_size = max_payload_size
         self._connected = False
+        self._loop_started = False
 
         self._client = mqtt.Client(client_id=self.client_id, clean_session=True, 
                                    userdata=None, protocol=mqtt.MQTTv311)
@@ -105,12 +106,16 @@ class MqttClient:
 
     def loop_start(self) -> None:
         """Starta MQTT nätverksloop i separat tråd."""
-        self._client.loop_start()
+        if not self._loop_started:
+            self._client.loop_start()
+            self._loop_started = True
 
     def loop_stop(self) -> None:
         """Stoppa MQTT nätverksloop."""
         try:
-            self._client.loop_stop()
+            if self._loop_started:
+                self._client.loop_stop()
+                self._loop_started = False
         except Exception as e:
             logging.error(f"Fel vid stopp av MQTT loop: {e}")
 
@@ -126,6 +131,9 @@ class MqttClient:
         Returns:
             True om anslutning lyckades, annars False
         """
+        # Starta nätverksloop om den inte redan är startad
+        self.loop_start()
+        
         for attempt in range(1, retries + 1):
             try:
                 logging.info(f"Ansluter till MQTT broker {self.host}:{self.port} (försök {attempt}/{retries})")
