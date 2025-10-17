@@ -68,6 +68,35 @@ def validate_seconds(value: str) -> bool:
     except ValueError:
         return False
 
+def strip_mqtt_protocol(url: str) -> str:
+    """
+    Ta bort MQTT-protokollprefix från URL om det finns.
+    
+    Args:
+        url: URL som kan innehålla mqtt://, mqtts://, ws://, eller wss://
+        
+    Returns:
+        URL utan protokollprefix och utan port
+    """
+    url = url.strip()
+    
+    # Ta bort vanliga MQTT-protokoll
+    protocols = ['mqtts://', 'mqtt://', 'wss://', 'ws://', 'https://', 'http://']
+    for protocol in protocols:
+        if url.lower().startswith(protocol):
+            url = url[len(protocol):]
+            break
+    
+    # Ta bort port om den finns i slutet (t.ex. :8883 eller :8884)
+    if ':' in url:
+        url = url.split(':')[0]
+    
+    # Ta bort trailing path om det finns (t.ex. /mqtt)
+    if '/' in url:
+        url = url.split('/')[0]
+    
+    return url
+
 def main():
     """Huvudfunktion för setup wizard."""
     print("=" * 70)
@@ -105,12 +134,24 @@ def main():
     print("─" * 70)
     print("💡 Använder HiveMQ Cloud - ingen lokal MQTT-installation krävs")
     print("📖 Skapa ett gratis konto på: https://console.hivemq.cloud/")
-    print("   Du behöver din cluster URL, användarnamn och lösenord")
+    print()
+    print("⚠️  VIKTIGT: Använd bara CLUSTER URL från HiveMQ Cloud")
+    print("   ✅ RÄTT format: abc123.hivemq.cloud")
+    print("   ❌ FEL format: mqtts://abc123.hivemq.cloud:8883")
+    print("   ❌ FEL format: wss://abc123.hivemq.cloud:8884/mqtt")
+    print()
+    print("   I HiveMQ Cloud dashboard, använd fältet märkt 'URL'")
+    print("   (INTE 'TLS MQTT URL' eller 'TLS Websocket URL')")
     
-    mqtt_host = ask("HiveMQ Cloud cluster URL (t.ex. abc123.hivemq.cloud)")
-    if not mqtt_host:
+    mqtt_host_raw = ask("HiveMQ Cloud cluster URL (bara hostname, t.ex. abc123.hivemq.cloud)")
+    if not mqtt_host_raw:
         print("❌ MQTT broker host krävs!")
         sys.exit(1)
+    
+    # Rensa URL från eventuella protokoll och portar
+    mqtt_host = strip_mqtt_protocol(mqtt_host_raw)
+    if mqtt_host != mqtt_host_raw:
+        print(f"ℹ️  URL korrigerad automatiskt: {mqtt_host_raw} → {mqtt_host}")
     
     mqtt_port = ask(
         "MQTT broker port (8883 för TLS)", 

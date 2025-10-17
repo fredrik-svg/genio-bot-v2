@@ -8,6 +8,7 @@ Detta projekt tillhandahåller en robust och säker röstassistentapplikation de
 > 💡 **Ny användare?** Se [QUICKSTART.md](QUICKSTART.md) för snabb guide om installation med virtuell miljö och lösning på `externally-managed-environment` felet.
 > 
 > 📡 **Behöver du sätta upp MQTT?** 
+> - **Vilken URL ska jag använda?**: [HIVEMQ_URL_GUIDE.md](HIVEMQ_URL_GUIDE.md) ❓
 > - **HiveMQ Cloud Guide**: [HIVEMQ_CLOUD.md](HIVEMQ_CLOUD.md) ☁️
 > - **Snabbstart (5 min)**: [MQTT_QUICKSTART.md](MQTT_QUICKSTART.md) 🚀
 > - **Detaljerad guide**: [MQTT_SETUP.md](MQTT_SETUP.md) 📖
