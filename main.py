@@ -111,7 +111,7 @@ class VoiceAssistant:
                 piper_model_file = config.PIPER_MODEL_PATH
             elif os.path.isdir(config.PIPER_MODEL_PATH):
                 # Directory path - find the .onnx file
-                onnx_files = glob.glob(os.path.join(config.PIPER_MODEL_PATH, "*.onnx"))
+                onnx_files = sorted(glob.glob(os.path.join(config.PIPER_MODEL_PATH, "*.onnx")))
                 if onnx_files:
                     piper_model_file = onnx_files[0]
                     logging.info(f"Hittade Piper-modell: {os.path.basename(piper_model_file)}")
