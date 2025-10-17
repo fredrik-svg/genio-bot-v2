@@ -55,6 +55,10 @@ SAMPLE_RATE = get_env_int("SAMPLE_RATE", 16000)
 RECORD_SECONDS_AFTER_WAKE = get_env_int("RECORD_SECONDS_AFTER_WAKE", 6)
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
+# Audio delays for better recognition (in seconds)
+AUDIO_FEEDBACK_DELAY = float(os.getenv("AUDIO_FEEDBACK_DELAY", "0.3"))  # Delay after feedback sound
+AUDIO_STREAM_STABILIZE_DELAY = float(os.getenv("AUDIO_STREAM_STABILIZE_DELAY", "0.1"))  # Delay after opening stream
+
 # Timeout och säkerhet
 MQTT_CONNECT_TIMEOUT = get_env_int("MQTT_CONNECT_TIMEOUT", 10)
 MQTT_MAX_RETRIES = get_env_int("MQTT_MAX_RETRIES", 5)

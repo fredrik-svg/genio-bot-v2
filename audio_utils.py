@@ -25,7 +25,8 @@ class AudioIO:
     def __init__(self, sample_rate: int = 16000, 
                  input_device_index: Optional[int] = None, 
                  output_device_index: Optional[int] = None,
-                 max_record_seconds: int = 30):
+                 max_record_seconds: int = 30,
+                 stream_stabilize_delay: float = 0.1):
         """
         Initialisera ljudhantering.
         
@@ -34,6 +35,7 @@ class AudioIO:
             input_device_index: Index för ingångsenhet (None = default)
             output_device_index: Index för utgångsenhet (None = default)
             max_record_seconds: Max inspelningstid (säkerhet)
+            stream_stabilize_delay: Fördröjning efter att stream öppnats (sekunder)
         """
         if sample_rate <= 0:
             raise ValueError(f"Ogiltig sample rate: {sample_rate}")
@@ -44,6 +46,7 @@ class AudioIO:
         self.input_device_index = input_device_index
         self.output_device_index = output_device_index
         self.max_record_seconds = max_record_seconds
+        self.stream_stabilize_delay = stream_stabilize_delay
         
         try:
             self.pa = pyaudio.PyAudio()
@@ -101,6 +104,10 @@ class AudioIO:
                 frames_per_buffer=chunk,
                 input_device_index=self.input_device_index
             )
+            
+            # Kort paus för att låta ljudströmmen stabiliseras
+            # Detta förhindrar att första chunks innehåller brus eller ofullständig data
+            time.sleep(self.stream_stabilize_delay)
             
             frames = []
             num_chunks = int(self.sample_rate / chunk * seconds)
